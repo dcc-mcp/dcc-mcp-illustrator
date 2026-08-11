@@ -1,0 +1,53 @@
+tools:
+  - name: inspect_item
+    description: Inspect one exact named Illustrator artwork, text, story, or swatch item.
+    input_schema:
+      type: object
+      required: [kind, name]
+      properties:
+        kind: {type: string, enum: [page, path, compound, placed, raster, text, story, swatch]}
+        name: {type: string}
+    read_only: true
+    destructive: false
+    idempotent: true
+    execution: sync
+    affinity: any
+    timeout_hint_secs: 30
+    source_file: scripts/inspect_item.py
+  - name: mutate_path
+    description: Replace path points or translate, resize, or rotate one exact named path item.
+    input_schema:
+      type: object
+      required: [name, operation]
+      properties:
+        name: {type: string}
+        operation: {type: string, enum: [set_path, translate, resize, rotate]}
+        path_points: {type: array, items: {type: array, minItems: 2, maxItems: 2, items: {type: number}}}
+        delta_x: {type: number}
+        delta_y: {type: number}
+        scale_x: {type: number}
+        scale_y: {type: number}
+        angle: {type: number}
+        options: {type: object}
+    read_only: false
+    destructive: true
+    idempotent: false
+    execution: sync
+    affinity: any
+    timeout_hint_secs: 60
+    source_file: scripts/mutate_path.py
+  - name: set_text_contents
+    description: Replace the contents of one exact named Illustrator text frame.
+    input_schema:
+      type: object
+      required: [name, contents]
+      properties:
+        name: {type: string}
+        contents: {type: string}
+    read_only: false
+    destructive: true
+    idempotent: true
+    execution: sync
+    affinity: any
+    timeout_hint_secs: 30
+    source_file: scripts/set_text_contents.py
