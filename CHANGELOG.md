@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.1](https://github.com/dcc-mcp/dcc-mcp-illustrator/compare/v0.1.0...v0.1.1) (2026-08-11)
+
+
+### Bug Fixes
+
+* enable persistent UI control executor ([#3](https://github.com/dcc-mcp/dcc-mcp-illustrator/issues/3)) ([47faba4](https://github.com/dcc-mcp/dcc-mcp-illustrator/commit/47faba45d27d0a485c1be357761c2b65517b4755))
+
 ## 0.1.0 (2026-08-11)
 
 
