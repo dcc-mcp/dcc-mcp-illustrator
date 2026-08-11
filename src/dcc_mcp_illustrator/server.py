@@ -51,6 +51,7 @@ class IllustratorMcpServer(DccServerBase):
             server_name="dcc-mcp-illustrator",
             server_version=__version__,
             instance_type="gui",
+            standalone_main_thread=True,
         )
         super().__init__(options=options)
         self._readiness = AdapterReadinessBinder(self)
