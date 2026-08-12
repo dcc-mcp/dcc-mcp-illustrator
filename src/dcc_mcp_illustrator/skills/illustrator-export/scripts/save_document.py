@@ -6,7 +6,7 @@ from dcc_mcp_illustrator.operations import save_document
 
 @skill_entry
 def main(**kwargs):
-    return action_result("Illustrator document saved.", save_document, **kwargs)
+    return action_result("Illustrator document saved.", lambda: save_document(**kwargs))
 
 
 if __name__ == "__main__":

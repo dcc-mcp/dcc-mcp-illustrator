@@ -6,7 +6,9 @@ from dcc_mcp_illustrator.operations import official_dom
 
 @skill_entry
 def main(**kwargs):
-    return action_result("Illustrator official DOM operation completed.", official_dom, **kwargs)
+    return action_result(
+        "Illustrator official DOM operation completed.", lambda: official_dom(**kwargs)
+    )
 
 
 if __name__ == "__main__":

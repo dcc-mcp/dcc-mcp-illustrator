@@ -6,7 +6,7 @@ from dcc_mcp_illustrator.operations import list_layers
 
 @skill_entry
 def main(**kwargs):
-    return action_result("Illustrator layers listed.", list_layers, **kwargs)
+    return action_result("Illustrator layers listed.", lambda: list_layers(**kwargs))
 
 
 if __name__ == "__main__":

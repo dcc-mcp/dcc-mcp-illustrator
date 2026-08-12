@@ -1,6 +1,6 @@
 ---
 name: illustrator-artwork
-description: Inspect Illustrator artwork, edit text frames, and update path geometry and transforms through typed adobepy facades.
+description: Create and inspect Illustrator artwork, edit text frames, and update path geometry and transforms through typed adobepy facades.
 license: MIT
 compatibility: "Illustrator CEP/ExtendScript; dcc-mcp-core 0.19+"
 allowed-tools: Python
@@ -17,5 +17,6 @@ metadata:
 
 # Illustrator Artwork
 
-Inspect exact named artwork before editing it. Use structured official DOM for
-creation or host APIs not covered by the typed mutation facade.
+Create named rectangles and point text through bounded structured-DOM tools.
+Inspect exact named artwork before editing it. Use the generic structured DOM
+only for host APIs not covered by the typed creation and mutation facades.

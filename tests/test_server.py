@@ -22,10 +22,12 @@ def test_server_uses_host_rpc_for_readiness_and_owned_broker_lifecycle():
         broker_factory=broker_factory,
         readiness_probe=readiness_probe,
     )
+    server.update_gateway_metadata = mock.Mock()
     with mock.patch("dcc_mcp_illustrator.server.DccServerBase.start", return_value=object()):
         server.start(install_atexit_hook=False)
     assert server.bridge_status.ready is True
     assert server._readiness.probe.report()["dcc"] is True
+    server.update_gateway_metadata.assert_called_once_with(scene="bridge_ready", version="30.0.0")
     broker_factory.assert_called_once_with(broker_url=None, token=None, timeout=1.0)
     with mock.patch("dcc_mcp_illustrator.server.DccServerBase.stop"):
         server.stop()

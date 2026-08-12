@@ -1,6 +1,6 @@
 ---
 name: illustrator-document
-description: Inspect Illustrator documents, artboards, layers, selections, vector items, linked artwork, text, stories, and swatches through typed adobepy facades.
+description: Create and inspect Illustrator documents, artboards, layers, selections, vector items, linked artwork, text, stories, and swatches through typed adobepy facades.
 license: MIT
 compatibility: "Illustrator CEP/ExtendScript; dcc-mcp-core 0.19+"
 allowed-tools: Python
@@ -17,5 +17,5 @@ metadata:
 
 # Illustrator Document
 
-Inspect the active document before mutations. Item kinds are `page`, `path`,
+Create an explicit RGB/CMYK document or inspect the active document before mutations. Item kinds are `page`, `path`,
 `compound`, `placed`, `raster`, `text`, `story`, and `swatch`. Names are exact.

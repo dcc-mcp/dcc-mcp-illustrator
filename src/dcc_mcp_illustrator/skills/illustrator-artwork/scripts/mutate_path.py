@@ -6,7 +6,7 @@ from dcc_mcp_illustrator.operations import mutate_path
 
 @skill_entry
 def main(**kwargs):
-    return action_result("Illustrator path updated.", mutate_path, **kwargs)
+    return action_result("Illustrator path updated.", lambda: mutate_path(**kwargs))
 
 
 if __name__ == "__main__":

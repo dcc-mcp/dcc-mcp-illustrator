@@ -6,7 +6,7 @@ from dcc_mcp_illustrator.operations import export_document
 
 @skill_entry
 def main(**kwargs):
-    return action_result("Illustrator document exported.", export_document, **kwargs)
+    return action_result("Illustrator document exported.", lambda: export_document(**kwargs))
 
 
 if __name__ == "__main__":

@@ -6,7 +6,7 @@ from dcc_mcp_illustrator.operations import list_artboards
 
 @skill_entry
 def main(**kwargs):
-    return action_result("Illustrator artboards listed.", list_artboards, **kwargs)
+    return action_result("Illustrator artboards listed.", list_artboards)
 
 
 if __name__ == "__main__":

@@ -6,7 +6,9 @@ from dcc_mcp_illustrator.operations import evaluate_extend_script
 
 @skill_entry
 def main(**kwargs):
-    return action_result("Illustrator ExtendScript evaluated.", evaluate_extend_script, **kwargs)
+    return action_result(
+        "Illustrator ExtendScript evaluated.", lambda: evaluate_extend_script(**kwargs)
+    )
 
 
 if __name__ == "__main__":

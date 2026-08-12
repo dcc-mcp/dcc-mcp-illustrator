@@ -11,7 +11,7 @@ from adobe.illustrator import Illustrator
 
 TOOL_NAMESPACE_COVERAGE = {
     "app": ("inspect_document",),
-    "document": ("inspect_document",),
+    "document": ("inspect_document", "create_document"),
     "artboard": ("list_artboards",),
     "layer": ("list_layers",),
     "pageItem": ("list_items", "inspect_item"),
@@ -23,7 +23,7 @@ TOOL_NAMESPACE_COVERAGE = {
     "story": ("list_items", "inspect_item"),
     "swatch": ("list_items", "inspect_item"),
     "export": ("save_document", "export_document"),
-    "dom": ("official_dom",),
+    "dom": ("official_dom", "create_document", "create_rectangle", "create_text"),
     "raw": ("evaluate_extend_script",),
 }
 
@@ -44,6 +44,272 @@ def _absolute_path(value: str) -> str:
 
 def _clean(values: dict[str, Any]) -> dict[str, Any]:
     return {key: value for key, value in values.items() if value is not None}
+
+
+def _operation_app(app_factory: Any, timeout_secs: float) -> tuple[Any, int]:
+    if timeout_secs <= 0:
+        raise ValueError("timeout_secs must be greater than zero")
+    timeout_ms = max(1, int(timeout_secs * 1000))
+    return app_factory(timeout=timeout_secs), timeout_ms
+
+
+def _dom_session(app_factory: Any, timeout_secs: float) -> tuple[Any, int]:
+    app, timeout_ms = _operation_app(app_factory, timeout_secs)
+    return app.dom, timeout_ms
+
+
+def _positive(value: float, name: str) -> float:
+    result = float(value)
+    if result <= 0:
+        raise ValueError(f"{name} must be greater than zero")
+    return result
+
+
+def _rgb(values: list[float]) -> tuple[float, float, float]:
+    if len(values) != 3:
+        raise ValueError("fill_rgb must contain exactly three channels")
+    channels = tuple(float(channel) for channel in values)
+    if any(channel < 0 or channel > 255 for channel in channels):
+        raise ValueError("fill_rgb channels must be between 0 and 255")
+    return channels[0], channels[1], channels[2]
+
+
+def _release_dom(*values: Any, timeout_ms: int) -> None:
+    for value in reversed(values):
+        release = getattr(value, "release", None)
+        if callable(release):
+            try:
+                release(timeout_ms=timeout_ms)
+            except Exception:  # noqa: BLE001 - release is best-effort cleanup
+                pass
+
+
+def _dom_color(global_root: Any, values: list[float], timeout_ms: int) -> Any:
+    red, green, blue = _rgb(values)
+    color = global_root.construct(
+        "RGBColor",
+        command_name="Create Illustrator color",
+        timeout_ms=timeout_ms,
+    )
+    for member, value in (("red", red), ("green", green), ("blue", blue)):
+        color.set(
+            member,
+            value,
+            command_name="Set Illustrator color",
+            timeout_ms=timeout_ms,
+        )
+    return color
+
+
+def _remove_dom(value: Any, *, command_name: str, timeout_ms: int) -> None:
+    try:
+        value.call(
+            "remove",
+            command_name=command_name,
+            mutating=True,
+            timeout_ms=timeout_ms,
+        )
+    except Exception:  # noqa: BLE001 - preserve the original mutation failure
+        pass
+
+
+def create_document(
+    width: float = 640,
+    height: float = 360,
+    *,
+    color_space: str = "rgb",
+    timeout_secs: float = 30,
+    app_factory=Illustrator,
+) -> dict[str, Any]:
+    """Create one document through the structured official DOM."""
+    document_width = _positive(width, "width")
+    document_height = _positive(height, "height")
+    enum_member = {"rgb": "RGB", "cmyk": "CMYK"}.get(color_space.lower())
+    if enum_member is None:
+        raise ValueError("color_space must be 'rgb' or 'cmyk'")
+    namespace, timeout_ms = _dom_session(app_factory, timeout_secs)
+    app_root = namespace.root("app", timeout_ms=timeout_ms)
+    global_root = namespace.root("global", timeout_ms=timeout_ms)
+    documents = app_root.get("documents", timeout_ms=timeout_ms)
+    color_spaces = global_root.get("DocumentColorSpace", timeout_ms=timeout_ms)
+    color_space_value = color_spaces.get(enum_member, timeout_ms=timeout_ms)
+    document = documents.call(
+        "add",
+        color_space_value,
+        document_width,
+        document_height,
+        1,
+        command_name="Create Illustrator document",
+        mutating=True,
+        timeout_ms=timeout_ms,
+    )
+    try:
+        snapshot = document.snapshot("name", "width", "height", "typename", timeout_ms=timeout_ms)
+        return {"document": snapshot, "created": True, "color_space": color_space.lower()}
+    finally:
+        _release_dom(
+            app_root,
+            global_root,
+            documents,
+            color_spaces,
+            document,
+            timeout_ms=timeout_ms,
+        )
+
+
+def create_rectangle(
+    name: str,
+    *,
+    left: float,
+    top: float,
+    width: float,
+    height: float,
+    fill_rgb: list[float],
+    stroked: bool = False,
+    timeout_secs: float = 30,
+    app_factory=Illustrator,
+) -> dict[str, Any]:
+    """Create and style one rectangle without evaluating arbitrary script."""
+    if not name.strip():
+        raise ValueError("name is required")
+    rectangle_width = _positive(width, "width")
+    rectangle_height = _positive(height, "height")
+    namespace, timeout_ms = _dom_session(app_factory, timeout_secs)
+    document = namespace.root("document", timeout_ms=timeout_ms)
+    global_root = namespace.root("global", timeout_ms=timeout_ms)
+    path_items = document.get("pathItems", timeout_ms=timeout_ms)
+    color = _dom_color(global_root, fill_rgb, timeout_ms)
+    rectangle = path_items.call(
+        "rectangle",
+        float(top),
+        float(left),
+        rectangle_width,
+        rectangle_height,
+        command_name="Create Illustrator rectangle",
+        mutating=True,
+        timeout_ms=timeout_ms,
+    )
+    try:
+        for member, value in (
+            ("name", name),
+            ("filled", True),
+            ("stroked", bool(stroked)),
+            ("fillColor", color),
+        ):
+            rectangle.set(
+                member,
+                value,
+                command_name="Style Illustrator rectangle",
+                timeout_ms=timeout_ms,
+            )
+        snapshot = rectangle.snapshot(
+            "name",
+            "typename",
+            "position",
+            "geometricBounds",
+            "width",
+            "height",
+            timeout_ms=timeout_ms,
+        )
+        return {"rectangle": snapshot, "created": True, "fill_rgb": list(_rgb(fill_rgb))}
+    except Exception:
+        _remove_dom(
+            rectangle,
+            command_name="Rollback Illustrator rectangle",
+            timeout_ms=timeout_ms,
+        )
+        raise
+    finally:
+        _release_dom(document, global_root, path_items, color, rectangle, timeout_ms=timeout_ms)
+
+
+def create_text(
+    name: str,
+    contents: str,
+    *,
+    position: list[float],
+    font_size: float,
+    fill_rgb: list[float],
+    timeout_secs: float = 30,
+    app_factory=Illustrator,
+) -> dict[str, Any]:
+    """Create and style one point-text frame through the structured DOM."""
+    if not name.strip():
+        raise ValueError("name is required")
+    if len(position) != 2:
+        raise ValueError("position must contain exactly two coordinates")
+    size = _positive(font_size, "font_size")
+    namespace, timeout_ms = _dom_session(app_factory, timeout_secs)
+    document = namespace.root("document", timeout_ms=timeout_ms)
+    global_root = namespace.root("global", timeout_ms=timeout_ms)
+    text_frames = document.get("textFrames", timeout_ms=timeout_ms)
+    color = _dom_color(global_root, fill_rgb, timeout_ms)
+    text = text_frames.call(
+        "add",
+        command_name="Create Illustrator text",
+        mutating=True,
+        timeout_ms=timeout_ms,
+    )
+    text_range = None
+    attributes = None
+    try:
+        for member, value in (
+            ("name", name),
+            ("contents", contents),
+            ("position", [float(position[0]), float(position[1])]),
+        ):
+            text.set(
+                member,
+                value,
+                command_name="Style Illustrator text",
+                timeout_ms=timeout_ms,
+            )
+        text_range = text.get("textRange", timeout_ms=timeout_ms)
+        attributes = text_range.get("characterAttributes", timeout_ms=timeout_ms)
+        attributes.set(
+            "size",
+            size,
+            command_name="Style Illustrator text",
+            timeout_ms=timeout_ms,
+        )
+        attributes.set(
+            "fillColor",
+            color,
+            command_name="Style Illustrator text",
+            timeout_ms=timeout_ms,
+        )
+        snapshot = text.snapshot(
+            "name",
+            "contents",
+            "typename",
+            "position",
+            "geometricBounds",
+            timeout_ms=timeout_ms,
+        )
+        return {
+            "text": snapshot,
+            "created": True,
+            "font_size": size,
+            "fill_rgb": list(_rgb(fill_rgb)),
+        }
+    except Exception:
+        _remove_dom(
+            text,
+            command_name="Rollback Illustrator text",
+            timeout_ms=timeout_ms,
+        )
+        raise
+    finally:
+        _release_dom(
+            document,
+            global_root,
+            text_frames,
+            color,
+            text_range,
+            attributes,
+            text,
+            timeout_ms=timeout_ms,
+        )
 
 
 def _artboard_data(value: Any) -> dict[str, Any]:
@@ -399,13 +665,20 @@ def save_document(
     *,
     format: str = "ai",
     options: dict[str, Any] | None = None,
+    timeout_secs: float = 120,
     app_factory=Illustrator,
 ) -> dict[str, Any]:
-    document = _document(app_factory())
+    app, timeout_ms = _operation_app(app_factory, timeout_secs)
+    document = _document(app)
     result = (
-        document.save_as(_absolute_path(path), format=format, options=options)
+        document.save_as(
+            _absolute_path(path),
+            format=format,
+            options=options,
+            timeout_ms=timeout_ms,
+        )
         if path
-        else document.save()
+        else document.save(timeout_ms=timeout_ms)
     )
     return {"result": _export_data(result), "saved": bool(result.ok)}
 
@@ -415,13 +688,25 @@ def export_document(
     path: str,
     *,
     options: dict[str, Any] | None = None,
+    timeout_secs: float = 300,
     app_factory=Illustrator,
 ) -> dict[str, Any]:
-    document = _document(app_factory())
+    app, timeout_ms = _operation_app(app_factory, timeout_secs)
+    document = _document(app)
     result = (
-        document.save_as(_absolute_path(path), format=format, options=options)
+        document.save_as(
+            _absolute_path(path),
+            format=format,
+            options=options,
+            timeout_ms=timeout_ms,
+        )
         if format in {"ai", "pdf", "eps"}
-        else document.export_file(format, _absolute_path(path), options=options)
+        else document.export_file(
+            format,
+            _absolute_path(path),
+            options=options,
+            timeout_ms=timeout_ms,
+        )
     )
     return {"result": _export_data(result), "exported": bool(result.ok)}
 
@@ -515,6 +800,9 @@ def evaluate_extend_script(
 
 __all__ = [
     "TOOL_NAMESPACE_COVERAGE",
+    "create_document",
+    "create_rectangle",
+    "create_text",
     "evaluate_extend_script",
     "export_document",
     "inspect_document",

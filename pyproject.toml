@@ -26,7 +26,7 @@ Homepage = "https://github.com/dcc-mcp/dcc-mcp-illustrator"
 Repository = "https://github.com/dcc-mcp/dcc-mcp-illustrator"
 
 [project.optional-dependencies]
-dev = ["build>=1.2", "pytest>=8", "ruff>=0.8", "twine>=6"]
+dev = ["build>=1.2", "pytest>=8", "pyyaml>=6", "ruff>=0.8", "twine>=6"]
 
 [project.scripts]
 dcc-mcp-illustrator = "dcc_mcp_illustrator.cli:main"
@@ -37,6 +37,9 @@ illustrator = "dcc_mcp_illustrator:IllustratorMcpServer"
 [tool.hatch.build.targets.wheel]
 packages = ["src/dcc_mcp_illustrator"]
 artifacts = ["src/dcc_mcp_illustrator/skills/**"]
+
+[tool.hatch.build.targets.sdist]
+exclude = ["docs/**/*.png", "docs/**/*.svg", "docs/**/*.webp"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
