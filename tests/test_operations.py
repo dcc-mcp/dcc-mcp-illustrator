@@ -5,6 +5,9 @@ from adobe.core.dom import DomObject
 
 from dcc_mcp_illustrator.operations import (
     TOOL_NAMESPACE_COVERAGE,
+    create_document,
+    create_rectangle,
+    create_text,
     evaluate_extend_script,
     export_document,
     inspect_document,
@@ -227,8 +230,179 @@ def test_save_and_export_use_absolute_paths(tmp_path):
     png_path = tmp_path / "demo.png"
     assert save_document(str(ai_path), app_factory=app_factory)["saved"] is True
     assert export_document("png24", str(png_path), app_factory=app_factory)["exported"] is True
-    document.save_as.assert_called_once_with(str(ai_path), format="ai", options=None)
-    document.export_file.assert_called_once_with("png24", str(png_path), options=None)
+    assert app_factory.call_args_list == [mock.call(timeout=120), mock.call(timeout=300)]
+    document.save_as.assert_called_once_with(
+        str(ai_path), format="ai", options=None, timeout_ms=120_000
+    )
+    document.export_file.assert_called_once_with(
+        "png24", str(png_path), options=None, timeout_ms=300_000
+    )
+
+
+def test_export_uses_a_long_operation_timeout_without_changing_health_probes(tmp_path):
+    document, _path, _text = document_fixture()
+    app_factory = mock.Mock(return_value=SimpleNamespace(active_document=document))
+    svg_path = tmp_path / "demo.svg"
+
+    result = export_document(
+        "svg",
+        str(svg_path),
+        timeout_secs=180,
+        app_factory=app_factory,
+    )
+
+    assert result["exported"] is True
+    app_factory.assert_called_once_with(timeout=180)
+    document.export_file.assert_called_once_with(
+        "svg",
+        str(svg_path),
+        options=None,
+        timeout_ms=180_000,
+    )
+
+
+def test_create_document_uses_structured_dom_and_explicit_dimensions():
+    dom = mock.Mock()
+    app_root = mock.Mock()
+    global_root = mock.Mock()
+    documents = mock.Mock()
+    color_spaces = mock.Mock()
+    document = mock.Mock()
+    dom.root.side_effect = [app_root, global_root]
+    app_root.get.return_value = documents
+    global_root.get.return_value = color_spaces
+    color_spaces.get.return_value = 42
+    documents.call.return_value = document
+    document.snapshot.return_value = {
+        "name": "Untitled-1",
+        "width": 640,
+        "height": 360,
+        "typename": "Document",
+    }
+    app_factory = mock.Mock(return_value=SimpleNamespace(dom=dom))
+
+    result = create_document(640, 360, color_space="rgb", app_factory=app_factory)
+
+    assert result["created"] is True
+    assert result["document"]["width"] == 640
+    documents.call.assert_called_once_with(
+        "add",
+        42,
+        640.0,
+        360.0,
+        1,
+        command_name="Create Illustrator document",
+        mutating=True,
+        timeout_ms=30_000,
+    )
+
+
+def test_create_rectangle_builds_rgb_color_without_raw_script():
+    dom = mock.Mock()
+    document = mock.Mock()
+    global_root = mock.Mock()
+    path_items = mock.Mock()
+    rectangle = mock.Mock()
+    color = mock.Mock()
+    dom.root.side_effect = [document, global_root]
+    document.get.return_value = path_items
+    path_items.call.return_value = rectangle
+    global_root.construct.return_value = color
+    rectangle.snapshot.return_value = {
+        "name": "Hero card",
+        "typename": "PathItem",
+        "geometricBounds": [72, 300, 568, 80],
+    }
+    app_factory = mock.Mock(return_value=SimpleNamespace(dom=dom))
+
+    result = create_rectangle(
+        "Hero card",
+        left=72,
+        top=300,
+        width=496,
+        height=220,
+        fill_rgb=[35, 120, 210],
+        app_factory=app_factory,
+    )
+
+    assert result["created"] is True
+    path_items.call.assert_called_once_with(
+        "rectangle",
+        300.0,
+        72.0,
+        496.0,
+        220.0,
+        command_name="Create Illustrator rectangle",
+        mutating=True,
+        timeout_ms=30_000,
+    )
+    assert color.set.call_args_list == [
+        mock.call("red", 35.0, command_name="Set Illustrator color", timeout_ms=30_000),
+        mock.call("green", 120.0, command_name="Set Illustrator color", timeout_ms=30_000),
+        mock.call("blue", 210.0, command_name="Set Illustrator color", timeout_ms=30_000),
+    ]
+    assert (
+        mock.call(
+            "fillColor",
+            color,
+            command_name="Style Illustrator rectangle",
+            timeout_ms=30_000,
+        )
+        in rectangle.set.call_args_list
+    )
+
+
+def test_create_text_sets_contents_position_size_and_color():
+    dom = mock.Mock()
+    document = mock.Mock()
+    global_root = mock.Mock()
+    text_frames = mock.Mock()
+    text = mock.Mock()
+    text_range = mock.Mock()
+    attributes = mock.Mock()
+    color = mock.Mock()
+    dom.root.side_effect = [document, global_root]
+    document.get.return_value = text_frames
+    text_frames.call.return_value = text
+    text.get.return_value = text_range
+    text_range.get.return_value = attributes
+    global_root.construct.return_value = color
+    text.snapshot.return_value = {
+        "name": "Headline",
+        "contents": "DCC MCP × Illustrator",
+        "typename": "TextFrame",
+        "position": [96, 180],
+    }
+    app_factory = mock.Mock(return_value=SimpleNamespace(dom=dom))
+
+    result = create_text(
+        "Headline",
+        "DCC MCP × Illustrator",
+        position=[96, 180],
+        font_size=34,
+        fill_rgb=[245, 247, 250],
+        app_factory=app_factory,
+    )
+
+    assert result["created"] is True
+    assert (
+        mock.call(
+            "size",
+            34.0,
+            command_name="Style Illustrator text",
+            timeout_ms=30_000,
+        )
+        in attributes.set.call_args_list
+    )
+    assert (
+        mock.call(
+            "fillColor",
+            color,
+            command_name="Style Illustrator text",
+            timeout_ms=30_000,
+        )
+        in attributes.set.call_args_list
+    )
 
 
 class FakeDom:

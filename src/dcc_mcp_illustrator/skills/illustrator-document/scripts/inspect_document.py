@@ -6,7 +6,7 @@ from dcc_mcp_illustrator.operations import inspect_document
 
 @skill_entry
 def main(**kwargs):
-    return action_result("Illustrator document inspected.", inspect_document, **kwargs)
+    return action_result("Illustrator document inspected.", inspect_document)
 
 
 if __name__ == "__main__":

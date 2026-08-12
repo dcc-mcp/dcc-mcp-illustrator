@@ -6,7 +6,7 @@ from dcc_mcp_illustrator.operations import list_items
 
 @skill_entry
 def main(**kwargs):
-    return action_result("Illustrator items listed.", list_items, **kwargs)
+    return action_result("Illustrator items listed.", lambda: list_items(**kwargs))
 
 
 if __name__ == "__main__":

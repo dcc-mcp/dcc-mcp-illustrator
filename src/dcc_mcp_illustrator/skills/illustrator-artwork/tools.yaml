@@ -1,4 +1,44 @@
 tools:
+  - name: create_rectangle
+    description: Create and style one named rectangle in the active document through the structured official DOM.
+    input_schema:
+      type: object
+      required: [name, left, top, width, height, fill_rgb]
+      properties:
+        name: {type: string, minLength: 1}
+        left: {type: number, description: Left coordinate in points.}
+        top: {type: number, description: Top coordinate in points.}
+        width: {type: number, exclusiveMinimum: 0, description: Rectangle width in points.}
+        height: {type: number, exclusiveMinimum: 0, description: Rectangle height in points.}
+        fill_rgb: {type: array, minItems: 3, maxItems: 3, items: {type: number, minimum: 0, maximum: 255}}
+        stroked: {type: boolean, default: false}
+        timeout_secs: {type: number, minimum: 1, maximum: 300, default: 30}
+    read_only: false
+    destructive: true
+    idempotent: false
+    execution: sync
+    affinity: any
+    timeout_hint_secs: 30
+    source_file: scripts/create_rectangle.py
+  - name: create_text
+    description: Create and style one named point-text frame in the active document through the structured official DOM.
+    input_schema:
+      type: object
+      required: [name, contents, position, font_size, fill_rgb]
+      properties:
+        name: {type: string, minLength: 1}
+        contents: {type: string}
+        position: {type: array, minItems: 2, maxItems: 2, items: {type: number}, description: X and Y position in points.}
+        font_size: {type: number, exclusiveMinimum: 0, description: Font size in points.}
+        fill_rgb: {type: array, minItems: 3, maxItems: 3, items: {type: number, minimum: 0, maximum: 255}}
+        timeout_secs: {type: number, minimum: 1, maximum: 300, default: 30}
+    read_only: false
+    destructive: true
+    idempotent: false
+    execution: sync
+    affinity: any
+    timeout_hint_secs: 30
+    source_file: scripts/create_text.py
   - name: inspect_item
     description: Inspect one exact named Illustrator artwork, text, story, or swatch item.
     input_schema:

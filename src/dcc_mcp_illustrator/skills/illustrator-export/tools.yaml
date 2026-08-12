@@ -7,12 +7,13 @@ tools:
         path: {type: string, description: Optional absolute destination path.}
         format: {type: string, default: ai}
         options: {type: object}
+        timeout_secs: {type: number, minimum: 1, maximum: 3600, default: 120, description: End-to-end broker and host timeout for long saves.}
     read_only: false
     destructive: true
     idempotent: false
     execution: sync
     affinity: any
-    timeout_hint_secs: 60
+    timeout_hint_secs: 120
     source_file: scripts/save_document.py
   - name: export_document
     description: Export the active document to an explicit absolute path and format.
@@ -20,13 +21,14 @@ tools:
       type: object
       required: [format, path]
       properties:
-        format: {type: string, description: Illustrator format such as ai, pdf, eps, png24, jpeg, or svg.}
+        format: {type: string, description: "Illustrator format such as ai, pdf, eps, png24, jpeg, or svg."}
         path: {type: string, description: Absolute destination path.}
         options: {type: object}
+        timeout_secs: {type: number, minimum: 1, maximum: 3600, default: 300, description: End-to-end broker and host timeout for long exports.}
     read_only: false
     destructive: true
     idempotent: false
     execution: sync
     affinity: any
-    timeout_hint_secs: 120
+    timeout_hint_secs: 300
     source_file: scripts/export_document.py

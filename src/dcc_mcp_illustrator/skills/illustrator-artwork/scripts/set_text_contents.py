@@ -6,7 +6,7 @@ from dcc_mcp_illustrator.operations import set_text_contents
 
 @skill_entry
 def main(**kwargs):
-    return action_result("Illustrator text updated.", set_text_contents, **kwargs)
+    return action_result("Illustrator text updated.", lambda: set_text_contents(**kwargs))
 
 
 if __name__ == "__main__":

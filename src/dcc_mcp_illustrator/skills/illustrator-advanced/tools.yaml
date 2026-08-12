@@ -7,7 +7,7 @@ tools:
       properties:
         operation: {type: string, enum: [root, get, set, call, construct, keys, snapshot, release]}
         receiver: {type: object, description: Session-scoped object containing $ref and optional $type.}
-        member: {description: Property, method, constructor, or numeric member.}
+        member: {description: "Property, method, constructor, or numeric member."}
         value: {description: Value for set; nested $ref objects are accepted.}
         args: {type: array, default: []}
         members: {type: array, items: {}, default: []}

@@ -89,11 +89,14 @@ class IllustratorMcpServer(DccServerBase):
             else:
                 logger.warning("Illustrator bridge is not ready: %s", status.reason)
             if self.is_running:
-                self.update_gateway_metadata(
-                    scene="bridge_ready" if status.ready else "bridge_waiting",
-                    version=status.version or "",
-                )
+                self._publish_bridge_metadata(status)
         return status
+
+    def _publish_bridge_metadata(self, status: IllustratorStatus) -> None:
+        self.update_gateway_metadata(
+            scene="bridge_ready" if status.ready else "bridge_waiting",
+            version=status.version or "",
+        )
 
     def _watch_bridge(self) -> None:
         while not self._watch_stop.wait(self.adapter_config.poll_interval):
@@ -141,8 +144,9 @@ class IllustratorMcpServer(DccServerBase):
             timeout=self.adapter_config.timeout,
         )
         try:
-            self._sample_bridge()
+            status = self._sample_bridge()
             handle = super().start(install_atexit_hook=install_atexit_hook)
+            self._publish_bridge_metadata(status)
             self._start_watchdog()
             return handle
         except Exception:

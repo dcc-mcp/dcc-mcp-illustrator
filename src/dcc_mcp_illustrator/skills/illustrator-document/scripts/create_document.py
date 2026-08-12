@@ -1,12 +1,12 @@
 from adobe.dcc_mcp import action_result
 from dcc_mcp_core.skill import skill_entry
 
-from dcc_mcp_illustrator.operations import inspect_item
+from dcc_mcp_illustrator.operations import create_document
 
 
 @skill_entry
 def main(**kwargs):
-    return action_result("Illustrator item inspected.", lambda: inspect_item(**kwargs))
+    return action_result("Illustrator document created.", lambda: create_document(**kwargs))
 
 
 if __name__ == "__main__":
