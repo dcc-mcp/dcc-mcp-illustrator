@@ -1,4 +1,5 @@
 from types import SimpleNamespace
+from unittest import mock
 
 from dcc_mcp_illustrator.runtime import REQUIRED_METHODS, probe_illustrator
 
@@ -22,6 +23,21 @@ def test_probe_rejects_other_adobe_sessions():
     status = probe_illustrator(client=client)
     assert status.ready is False
     assert status.reason == "Illustrator bridge session is not connected"
+
+
+def test_probe_redacts_tokens_and_url_userinfo_from_failures(monkeypatch):
+    secret = "runtime-secret"
+    monkeypatch.setenv("ADOBEPY_TOKEN", secret)
+    client = mock.Mock()
+    client.capabilities.side_effect = RuntimeError(
+        f"{secret} rejected by http://operator:password@127.0.0.1:47391"
+    )
+
+    status = probe_illustrator(client=client)
+
+    assert status.ready is False
+    assert secret not in status.reason
+    assert "operator:password" not in status.reason
 
 
 def test_probe_requires_complete_bridge_contract():

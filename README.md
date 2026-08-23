@@ -11,13 +11,19 @@ bridge, typed facade, and complete structured official DOM.
 
 <sub>Workflow illustration generated with OpenAI image generation; no third-party source assets.</sub>
 
+Use the canonical, receipt-backed [installation guide](install.md):
+
 ```bash
-pip install dcc-mcp-illustrator
-adobepy install-bridge illustrator --dest <extension-dir> --token <token>
-dcc-mcp-illustrator
+python -m pip install --upgrade dcc-mcp-illustrator
+dcc-mcp-illustrator install --json --dry-run --dcc-path "$ILLUSTRATOR_EXE" --python "$PYTHON_EXE"
+dcc-mcp-illustrator install --json --yes --dcc-path "$ILLUSTRATOR_EXE" --python "$PYTHON_EXE"
 ```
 
-Set `ADOBEPY_TOKEN` to the same non-default token used to install the bridge.
+Set `ADOBEPY_TOKEN` in the environment shared by the broker, installer, and
+adapter, and set the two path variables as shown in the platform-specific guide.
+The lifecycle never accepts the token in process arguments. It reports
+ready only after the installed CEP bridge connects and a typed Illustrator RPC
+succeeds.
 The adapter uses an OS-assigned port and registers with DCC-MCP discovery;
 `DCC_MCP_ILLUSTRATOR_PORT` is only needed for a fixed direct endpoint.
 
