@@ -135,8 +135,16 @@ def test_dry_run_builds_full_plan_without_writing_state(tmp_path, monkeypatch):
         "platform": "Windows",
     }
     assert report["plan"]["bridge"]["kind"] == "cep"
-    assert report["plan"]["bridge"]["destination"].endswith(
-        "Adobe\\CEP\\extensions\\com.adobepy.bridge.illustrator"
+    destination_parts = tuple(
+        part
+        for part in report["plan"]["bridge"]["destination"].replace("\\", "/").split("/")
+        if part
+    )
+    assert destination_parts[-4:] == (
+        "Adobe",
+        "CEP",
+        "extensions",
+        "com.adobepy.bridge.illustrator",
     )
     assert "plan-secret" not in json.dumps(report)
     assert not state.exists()
