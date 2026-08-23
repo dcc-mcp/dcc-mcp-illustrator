@@ -8,6 +8,8 @@ from typing import Any, Callable, Mapping
 from adobe.core import BrokerClient
 from adobe.illustrator import Illustrator
 
+from .install_contract import redact
+
 REQUIRED_METHODS: Mapping[str, tuple[str, ...]] = {
     "app": ("getVersion",),
     "document": ("getActive",),
@@ -87,7 +89,7 @@ def probe_illustrator(
     try:
         session = _matching_session(active_client.capabilities(), target)
     except Exception as exc:  # noqa: BLE001
-        return IllustratorStatus(False, str(exc), target=target)
+        return IllustratorStatus(False, redact(exc), target=target)
     if session is None:
         return IllustratorStatus(
             False, "Illustrator bridge session is not connected", target=target
@@ -105,7 +107,7 @@ def probe_illustrator(
     try:
         version = str(app_factory(client=active_client).version)
     except Exception as exc:  # noqa: BLE001
-        return IllustratorStatus(False, str(exc), target=target)
+        return IllustratorStatus(False, redact(exc), target=target)
     return IllustratorStatus(True, version=version, target=target)
 
 

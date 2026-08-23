@@ -13,9 +13,11 @@ from dcc_mcp_core.readiness import AdapterReadinessBinder
 from dcc_mcp_core.server_base import DccServerBase
 
 from .__version__ import __version__
+from .bootstrap_diagnostics import capture_bootstrap_error
 from .capabilities import illustrator_capabilities
 from .config import IllustratorConfig
 from .context import collect_context
+from .install_contract import redact
 from .runtime import IllustratorStatus, probe_illustrator
 
 logger = logging.getLogger(__name__)
@@ -103,7 +105,7 @@ class IllustratorMcpServer(DccServerBase):
             try:
                 self._sample_bridge()
             except Exception as exc:  # noqa: BLE001
-                logger.warning("Illustrator readiness check failed: %s", exc)
+                logger.warning("Illustrator readiness check failed: %s", redact(exc))
                 self._readiness.probe.set_dcc_ready(False)
 
     def _start_watchdog(self) -> None:
@@ -138,22 +140,24 @@ class IllustratorMcpServer(DccServerBase):
     def start(self, *, install_atexit_hook: bool = True) -> Any:
         if self.is_running:
             return super().start(install_atexit_hook=install_atexit_hook)
-        self.broker = self._broker_factory(
-            broker_url=self.adapter_config.broker_url,
-            token=self.adapter_config.token,
-            timeout=self.adapter_config.timeout,
-        )
         try:
+            self.broker = self._broker_factory(
+                broker_url=self.adapter_config.broker_url,
+                token=self.adapter_config.token,
+                timeout=self.adapter_config.timeout,
+            )
             status = self._sample_bridge()
             handle = super().start(install_atexit_hook=install_atexit_hook)
             self._publish_bridge_metadata(status)
             self._start_watchdog()
             return handle
-        except Exception:
+        except Exception as exc:
+            safe_error = capture_bootstrap_error("startup", str(exc))
             self._stop_watchdog()
-            self.broker.stop()
-            self.broker = None
-            raise
+            if self.broker is not None:
+                self.broker.stop()
+                self.broker = None
+            raise RuntimeError(safe_error) from None
 
     def stop(self) -> None:
         self._stop_watchdog()

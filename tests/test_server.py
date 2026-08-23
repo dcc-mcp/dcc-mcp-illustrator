@@ -2,6 +2,7 @@ from pathlib import Path
 from unittest import mock
 
 import dcc_mcp_core
+import pytest
 from adobe.runtime import BrokerHandle
 
 from dcc_mcp_illustrator.config import IllustratorConfig
@@ -51,3 +52,26 @@ def test_server_registers_persistent_in_process_skill_executor():
 
     assert server.load_skill("ui-control") is True
     assert server.is_skill_loaded("ui-control") is True
+
+
+def test_broker_bootstrap_failure_is_captured_and_redacted(tmp_path, monkeypatch):
+    secret = "broker-bootstrap-secret"
+    monkeypatch.setenv("ADOBEPY_TOKEN", secret)
+    monkeypatch.setenv("DCC_MCP_ILLUSTRATOR_INSTALL_STATE_DIR", str(tmp_path))
+    broker_factory = mock.Mock(
+        side_effect=RuntimeError(f"{secret} rejected by ws://operator:password@127.0.0.1:47391")
+    )
+    server = IllustratorMcpServer(
+        gateway_port=0,
+        config=IllustratorConfig(token=secret, timeout=1.0, poll_interval=60.0),
+        broker_factory=broker_factory,
+    )
+
+    with pytest.raises(RuntimeError) as failure:
+        server.start(install_atexit_hook=False)
+
+    assert secret not in str(failure.value)
+    assert "operator:password" not in str(failure.value)
+    diagnostic = (tmp_path / "bootstrap-errors.json").read_text()
+    assert secret not in diagnostic
+    assert "operator:password" not in diagnostic

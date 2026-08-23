@@ -20,6 +20,13 @@ def test_package_declares_runtime_entry_points():
     assert 'illustrator = "dcc_mcp_illustrator:IllustratorMcpServer"' in text
 
 
+def test_ci_inspects_built_lifecycle_payload():
+    workflow = (Path(__file__).parents[1] / ".github" / "workflows" / "ci.yml").read_text(
+        encoding="utf-8"
+    )
+    assert "python tools/check_distribution.py" in workflow
+
+
 def test_flow_mapping_descriptions_do_not_create_phantom_schema_keywords():
     skills = Path(__file__).parents[1] / "src" / "dcc_mcp_illustrator" / "skills"
     export = yaml.safe_load((skills / "illustrator-export" / "tools.yaml").read_text())
