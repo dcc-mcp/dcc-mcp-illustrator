@@ -23,6 +23,9 @@ def test_root_install_guide_documents_canonical_lifecycle_and_platform_truth():
     assert "macOS" in text
     assert "Linux" in text
     assert "ADOBEPY_TOKEN" in text
+    assert "dcc-mcp-core` 0.20.14" in text
+    assert "dcc-mcp/adobepy#70" in text
+    assert "licensed live Illustrator" in text
     assert "--token" not in text
     assert "directly_usable" in text
     assert "CEP" in text

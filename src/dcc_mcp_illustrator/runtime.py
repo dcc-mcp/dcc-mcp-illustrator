@@ -8,8 +8,6 @@ from typing import Any, Callable, Mapping
 from adobe.core import BrokerClient
 from adobe.illustrator import Illustrator
 
-from .install_contract import redact
-
 REQUIRED_METHODS: Mapping[str, tuple[str, ...]] = {
     "app": ("getVersion",),
     "document": ("getActive",),
@@ -50,14 +48,21 @@ class IllustratorStatus:
     reason: str = ""
     version: str | None = None
     target: str = "default"
+    identity: Mapping[str, Any] | None = None
+    error_type: str | None = None
 
 
 def _matching_session(payloads: list[Mapping[str, Any]], target: str) -> Mapping[str, Any] | None:
+    matches = []
     for payload in payloads:
         capabilities = payload.get("capabilities", {})
-        if capabilities.get("host") == "illustrator" and payload.get("target", "default") == target:
-            return payload
-    return None
+        if (
+            capabilities.get("host") == "illustrator"
+            and capabilities.get("bridgeKind") == "cep"
+            and payload.get("target", "default") == target
+        ):
+            matches.append(payload)
+    return matches[0] if len(matches) == 1 else None
 
 
 def _missing_methods(capabilities: Mapping[str, Any]) -> list[str]:
@@ -79,7 +84,7 @@ def probe_illustrator(
     client: BrokerClient | None = None,
     app_factory: Callable[..., Any] = Illustrator,
 ) -> IllustratorStatus:
-    """Require a complete Illustrator capability session and one real host RPC."""
+    """Require a complete Illustrator capability session and exact runtime identity."""
     active_client = client or BrokerClient(
         broker_url=broker_url,
         token=token,
@@ -88,12 +93,20 @@ def probe_illustrator(
     )
     try:
         session = _matching_session(active_client.capabilities(), target)
-    except Exception as exc:  # noqa: BLE001
-        return IllustratorStatus(False, redact(exc), target=target)
+    except Exception:  # noqa: BLE001 - readiness must remain queryable
+        return IllustratorStatus(
+            False,
+            "adobepy broker capability probe failed",
+            target=target,
+            error_type="broker_probe_failed",
+        )
     if session is None:
         return IllustratorStatus(
-            False, "Illustrator bridge session is not connected", target=target
+            False,
+            "illustrator bridge session is not connected",
+            target=target,
         )
+
     capabilities = session.get("capabilities", {})
     missing = _missing_methods(capabilities)
     if missing:
@@ -104,11 +117,33 @@ def probe_illustrator(
         )
     if "officialDom" not in capabilities.get("features", ()):
         return IllustratorStatus(False, "official DOM capability is unavailable", target=target)
+
     try:
-        version = str(app_factory(client=active_client).version)
-    except Exception as exc:  # noqa: BLE001
-        return IllustratorStatus(False, redact(exc), target=target)
-    return IllustratorStatus(True, version=version, target=target)
+        app = app_factory(client=active_client)
+        version = str(app.version)
+        runtime_identity = getattr(app, "runtime_identity", None)
+        identity = runtime_identity() if callable(runtime_identity) else runtime_identity
+    except Exception:  # noqa: BLE001 - readiness reports stable host failures
+        return IllustratorStatus(
+            False,
+            "typed Illustrator runtime probe failed",
+            target=target,
+            error_type="host_rpc_failed",
+        )
+    if not isinstance(identity, Mapping):
+        return IllustratorStatus(
+            False,
+            "adobepy did not attest the exact Illustrator CEP runtime identity",
+            version=version,
+            target=target,
+            error_type="runtime_identity_unavailable",
+        )
+    return IllustratorStatus(
+        True,
+        version=version,
+        target=target,
+        identity=dict(identity),
+    )
 
 
 __all__ = ["IllustratorStatus", "REQUIRED_METHODS", "probe_illustrator"]

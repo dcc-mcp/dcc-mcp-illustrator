@@ -10,6 +10,7 @@ def capability_payload(host="illustrator", methods=None, features=None):
             "target": "default",
             "capabilities": {
                 "host": host,
+                "bridgeKind": "cep",
                 "methods": methods
                 or {namespace: list(values) for namespace, values in REQUIRED_METHODS.items()},
                 "features": features if features is not None else ["officialDom"],
@@ -22,7 +23,7 @@ def test_probe_rejects_other_adobe_sessions():
     client = SimpleNamespace(capabilities=lambda: capability_payload(host="after-effects"))
     status = probe_illustrator(client=client)
     assert status.ready is False
-    assert status.reason == "Illustrator bridge session is not connected"
+    assert status.reason == "illustrator bridge session is not connected"
 
 
 def test_probe_redacts_tokens_and_url_userinfo_from_failures(monkeypatch):
@@ -53,7 +54,7 @@ def test_probe_calls_real_host_version():
     client = SimpleNamespace(capabilities=lambda: capability_payload())
     status = probe_illustrator(
         client=client,
-        app_factory=lambda **_kwargs: SimpleNamespace(version="30.0.0"),
+        app_factory=lambda **_kwargs: SimpleNamespace(version="30.0.0", runtime_identity={}),
     )
     assert status.ready is True
     assert status.version == "30.0.0"
@@ -67,4 +68,5 @@ def test_probe_reports_host_rpc_failure():
 
     status = probe_illustrator(client=client, app_factory=fail)
     assert status.ready is False
-    assert status.reason == "host RPC failed"
+    assert status.reason == "typed Illustrator runtime probe failed"
+    assert status.error_type == "host_rpc_failed"

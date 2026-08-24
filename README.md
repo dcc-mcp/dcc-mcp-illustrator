@@ -23,7 +23,9 @@ Set `ADOBEPY_TOKEN` in the environment shared by the broker, installer, and
 adapter, and set the two path variables as shown in the platform-specific guide.
 The lifecycle never accepts the token in process arguments. It reports
 ready only after the installed CEP bridge connects and a typed Illustrator RPC
-succeeds.
+succeeds with exact process, profile, and CEP-module identity. The currently
+published adobepy runtime does not yet expose that complete attestation; the
+adapter therefore remains fail-closed rather than claiming live readiness.
 The adapter uses an OS-assigned port and registers with DCC-MCP discovery;
 `DCC_MCP_ILLUSTRATOR_PORT` is only needed for a fixed direct endpoint.
 
