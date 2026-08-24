@@ -1,0 +1,1 @@
+"""Canonical adapter installation schemas."""

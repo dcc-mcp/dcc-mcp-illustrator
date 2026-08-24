@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 import signal
 import time
 
@@ -18,31 +19,23 @@ def build_parser() -> argparse.ArgumentParser:
         "command",
         nargs="?",
         choices=("install", "status", "verify", "uninstall", "upgrade"),
-        help="Run the canonical adapter install lifecycle instead of the server",
+        help="run a standard host-integrated install lifecycle verb",
     )
-    parser.add_argument("--json", action="store_true", help="Emit Install SOP v1 JSON")
-    parser.add_argument("--yes", action="store_true", help="Apply a lifecycle operation")
-    parser.add_argument("--dry-run", action="store_true", help="Plan without changing files")
-    parser.add_argument("--dcc-path", default="", metavar="PATH")
-    parser.add_argument("--python", default="", metavar="PATH")
     parser.add_argument("--mcp-port", type=int, default=None)
     parser.add_argument("--gateway-port", type=int, default=None)
     parser.add_argument("--broker-url", default=None)
     parser.add_argument("--skill-path", action="append", default=[])
     parser.add_argument("--no-builtins", action="store_true")
+    parser.add_argument("--json", action="store_true")
+    parser.add_argument("--yes", action="store_true")
+    parser.add_argument("--dry-run", action="store_true")
+    parser.add_argument("--dcc-path")
+    parser.add_argument("--python")
     parser.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
     return parser
 
 
-def main(argv: list[str] | None = None) -> None:
-    args = build_parser().parse_args(argv)
-    if args.command:
-        from .install_lifecycle import run_install_lifecycle
-
-        exit_code = run_install_lifecycle(args)
-        if exit_code:
-            raise SystemExit(exit_code)
-        return
+def _run_server(args: argparse.Namespace) -> None:
     from .server import start_server, stop_server
 
     server = start_server(
@@ -68,5 +61,30 @@ def main(argv: list[str] | None = None) -> None:
         stop_server()
 
 
+def main(argv: list[str] | None = None) -> int:
+    args = build_parser().parse_args(argv)
+    if args.command is None:
+        _run_server(args)
+        return 0
+
+    from .install_models import InstallRequest
+    from .install_service import run_lifecycle
+
+    request = InstallRequest(
+        command=args.command,
+        as_json=args.json,
+        yes=args.yes,
+        dry_run=args.dry_run,
+        dcc_path=args.dcc_path,
+        python=args.python,
+    )
+    report, exit_code = run_lifecycle(request)
+    if args.json:
+        print(json.dumps(report, sort_keys=True))
+    else:
+        print(f"{args.command}: {report['status']}")
+    return exit_code
+
+
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())

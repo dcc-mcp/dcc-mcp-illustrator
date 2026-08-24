@@ -7,10 +7,13 @@ and reports success only after a real typed Illustrator readiness call.
 ## Requirements
 
 - Python 3.9 or newer for the adapter process.
-- `dcc-mcp-core` 0.19.91 or newer.
+- `dcc-mcp-core` 0.20.14 or newer. The adapter validates every lifecycle result
+  against the canonical Draft 2020-12 Install SOP v1 schema shipped by Core.
 - Illustrator 23.0 / CC 2019 or newer.
-- An `adobepy` runtime containing the broker executable and built Illustrator
-  CEP bridge. The Python wheel alone does not contain that runtime.
+- An official checksum-pinned `adobepy` 0.6.2 Windows x64 runtime bundle
+  containing the broker executable and built Illustrator CEP bridge. The
+  Python wheel alone does not contain that runtime. Other platforms currently
+  fail closed until an equally attestable release artifact exists.
 - A private `ADOBEPY_TOKEN` set in the environment used by the broker,
   installer, and adapter. Credentials are environment-only and are never
   accepted as a lifecycle CLI argument.
@@ -26,7 +29,7 @@ python -m pip install --upgrade dcc-mcp-illustrator
 | Platform | Host integration |
 | --- | --- |
 | Windows | Supported. Illustrator is discovered under Adobe's Program Files layout; the CEP extension is installed below `%APPDATA%\Adobe\CEP\extensions`. The published `adobepy` install guide currently documents a Windows x64 runtime bundle. |
-| macOS | Supported when an operator provides a compatible `adobepy` broker/CLI. Illustrator is discovered in `/Applications`; the CEP extension is installed below `~/Library/Application Support/Adobe/CEP/extensions`. |
+| macOS | The signed Illustrator application can be discovered in `/Applications`, but lifecycle execution currently fails closed because no checksum-pinned compatible `adobepy` CLI artifact is published for this adapter. |
 | Linux | The Python package can be inspected and tested, but Adobe Illustrator and live CEP integration are unavailable. Install and verify fail closed. |
 
 The bridge manifest supports Illustrator host ID `ILST` from version 23.0.
@@ -53,10 +56,10 @@ dcc-mcp-illustrator install --json --yes --dcc-path $hostPath --python (Get-Comm
 export ADOBEPY_CLI="$HOME/Tools/adobepy/bin/adobepy"
 read -rs ADOBEPY_TOKEN && export ADOBEPY_TOKEN
 dcc-mcp-illustrator install --json --dry-run \
-  --dcc-path "/Applications/Adobe Illustrator 2025/Adobe Illustrator.app/Contents/MacOS/Adobe Illustrator" \
+  --dcc-path "/Applications/Adobe Illustrator 2025/Adobe Illustrator.app" \
   --python "$(command -v python3)"
 dcc-mcp-illustrator install --json --yes \
-  --dcc-path "/Applications/Adobe Illustrator 2025/Adobe Illustrator.app/Contents/MacOS/Adobe Illustrator" \
+  --dcc-path "/Applications/Adobe Illustrator 2025/Adobe Illustrator.app" \
   --python "$(command -v python3)"
 ```
 
@@ -77,16 +80,18 @@ rollback, secret redaction, and receipts cannot be bypassed:
 3. Set `ADOBEPY_CLI`, `ADOBEPY_TOKEN`, and optionally
    `ADOBEPY_BROKER_URL` in the environment.
 4. Run the dry-run command and inspect `plan.host`, `plan.python`,
-   `plan.bridge`, and `installed_state`.
+   `plan.bridge`, and `installation_state`.
 5. Re-run with `--yes`.
 6. Execute the single returned host-enablement step if present, then restart or
    activate Illustrator so the manifest's CEP `StartOn` event can connect.
 7. Run `dcc-mcp-illustrator verify --json`.
 
-The installer writes a receipt under
-`~/.dcc-mcp/illustrator/receipts/illustrator.json`. It records paths, versions,
-and non-sensitive file digests. The secret-bearing `adobepy.config.js` is marked
-sensitive and its contents are never copied into JSON, logs, or the receipt.
+The installer writes a receipt under its user-scoped adapter state directory
+(`%LOCALAPPDATA%\dcc-mcp\illustrator` on Windows and
+`~/Library/Application Support/dcc-mcp/illustrator` on macOS). It records exact
+typed file, directory, and link ownership; paths; versions; process/runtime
+identity; and non-sensitive digests. The secret-bearing `adobepy.config.js` is
+hashed but its contents are never copied into JSON, logs, or the receipt.
 
 ## Verify
 
@@ -105,9 +110,13 @@ Verification is ordered and fail-closed:
 5. call the existing typed Illustrator readiness probe, including the real host
    version RPC.
 
-Only all five passing produces `directly_usable: true`. This repository's CI
-uses a synthetic CEP profile and injected typed probes; it does not claim a
-live Illustrator host on GitHub runners.
+Only all five passing produces `directly_usable: true`. The published adobepy
+runtime does not yet provide the exact Illustrator PID/start/executable/profile/
+CEP-origin attestation required by this verifier; that bounded dependency is
+tracked in `dcc-mcp/adobepy#70`, so readiness remains fail-closed until a
+compatible release is installed. This repository's CI uses a synthetic CEP
+profile and injected typed probes; it does not claim a licensed live Illustrator
+host on GitHub runners.
 
 ## Upgrade
 
@@ -152,10 +161,11 @@ compatible runtime; no adapter cache or unpinned binary download is used.
 
 ### Exit 40: broker, CEP session, or typed RPC unavailable
 
-Start the broker with the same environment token, execute the returned CEP
-enablement step if needed, and restart or activate Illustrator. Then rerun
-`dcc-mcp-illustrator verify --json`. A reachable port is insufficient: the CEP
-session and typed Illustrator RPC must both pass.
+Install a compatible signed adobepy release that implements the bounded
+Illustrator bootstrap and exact runtime identity contract, then execute the
+returned bootstrap action and exact verify continuation. A reachable port or a
+manually opened UI is insufficient: the exact CEP session, process identity,
+module origins, and typed Illustrator RPC must all pass.
 
 ### Exit 50: locked files
 

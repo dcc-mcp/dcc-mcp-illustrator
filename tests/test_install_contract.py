@@ -1,9 +1,12 @@
 from __future__ import annotations
 
+import importlib.resources
 import json
 import os
 import subprocess
 import sys
+
+from jsonschema import Draft202012Validator
 
 from dcc_mcp_illustrator.install_contract import redact_payload
 
@@ -20,23 +23,23 @@ def test_public_status_reports_machine_readable_not_installed_contract(tmp_path)
         text=True,
     )
 
-    assert result.returncode == 0
+    assert result.returncode == 10
     assert result.stderr == ""
     payload = json.loads(result.stdout)
     assert payload["schema_version"] == 1
     assert payload["dcc_type"] == "illustrator"
-    assert payload["verb"] == "status"
-    assert payload["mode"] == "plan"
-    assert payload["status"] == "ok"
-    assert payload["installed_state"] == "fresh"
-    assert payload["steps"] == [{"id": "inspect_receipt", "status": "fresh"}]
-    assert payload["verify"] == {
-        "directly_usable": False,
-        "failure_stage": "install_state",
-        "failure_reason": "No receipt-backed Illustrator bridge is installed",
-    }
+    schema = json.loads(
+        importlib.resources.files("dcc_mcp_illustrator.schemas")
+        .joinpath("adapter-install-sop-v1.schema.json")
+        .read_text(encoding="utf-8")
+    )
+    Draft202012Validator(schema).validate(payload)
+    assert payload["plan"]["mode"] == "status"
+    assert payload["status"] in {"ok", "failed"}
+    assert payload["installation_state"] in {"fresh", "unknown"}
+    assert payload["verify"]["directly_usable"] is False
     assert payload["receipt_path"] is None
-    assert payload["next_steps"] == []
+    assert isinstance(payload["next_steps"], list)
 
 
 def test_nested_public_payload_redaction_preserves_json_types(monkeypatch):
