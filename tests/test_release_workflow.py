@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import hashlib
 import os
 import re
+import shlex
 import shutil
 import subprocess
 from pathlib import Path
@@ -14,6 +16,16 @@ ROOT = Path(__file__).parents[1]
 WORKFLOW = ROOT / ".github" / "workflows" / "release.yml"
 SHA = re.compile(r"^[0-9a-f]{40}$")
 HEAD_SOURCE_BINDING = 'test "$(git rev-parse HEAD)" = "$source_sha"'
+ARTIFACT_ARCHIVE = "release-distributions.tar"
+ARTIFACT_HASH_CAPTURE = (
+    "artifact_digest=\"$(sha256sum release-distributions.tar | cut -d ' ' -f1)\""
+)
+DOWNLOADED_HASH_CAPTURE = (
+    'actual_artifact_digest="$(sha256sum release-artifact/release-distributions.tar '
+    "| cut -d ' ' -f1)\""
+)
+DOWNLOADED_HASH_BINDING = 'test "$actual_artifact_digest" = "$ARTIFACT_DIGEST"'
+GH_UPLOAD_COMMAND = 'gh release upload "$TAG" dist/* --repo "$GITHUB_REPOSITORY"'
 
 PINNED_ACTIONS = {
     "googleapis/release-please-action": "45996ed1f6d02564a971a2fa1b5860e934307cf7",
@@ -58,10 +70,53 @@ def _step(job: dict, name: str) -> tuple[int, dict]:
 
 
 def _assert_unique_steps(job_name: str, job: dict) -> None:
+    assert all("run" not in step or isinstance(step["run"], str) for step in _steps(job)), (
+        f"non-executable run value in {job_name}"
+    )
     names = [step["name"] for step in _steps(job) if "name" in step]
     ids = [step["id"] for step in _steps(job) if "id" in step]
     assert len(names) == len(set(names)), f"duplicate step name in {job_name}"
     assert len(ids) == len(set(ids)), f"duplicate step id in {job_name}"
+
+
+def _executable_lines(run: str) -> list[str]:
+    return [
+        line.strip()
+        for line in run.splitlines()
+        if line.strip() and not line.lstrip().startswith("#")
+    ]
+
+
+def _shell_tokens(line: str) -> list[str]:
+    try:
+        return shlex.split(line, comments=True, posix=True)
+    except ValueError:
+        return []
+
+
+def _actual_gh_uploads(jobs: dict) -> list[tuple[str, dict, str]]:
+    mutations = []
+    for job_name, job in jobs.items():
+        for step in _steps(job):
+            for line in _executable_lines(step.get("run", "")):
+                tokens = _shell_tokens(line)
+                if tokens[:3] == ["gh", "release", "upload"]:
+                    mutations.append((job_name, step, line))
+    return mutations
+
+
+def _actual_twine_uploads(jobs: dict) -> list[str]:
+    mutations = []
+    for job in jobs.values():
+        for step in _steps(job):
+            for line in _executable_lines(step.get("run", "")):
+                tokens = _shell_tokens(line)
+                if tokens[:4] == ["python", "-m", "twine", "upload"] or tokens[:2] == [
+                    "twine",
+                    "upload",
+                ]:
+                    mutations.append(line)
+    return mutations
 
 
 def _validate_release_contract(text: str) -> None:
@@ -77,25 +132,33 @@ def _validate_release_contract(text: str) -> None:
     assert build["permissions"] == {"contents": "read"}
     upload_index, upload = _step(build, "Upload immutable release artifact")
     assert upload["uses"] == ("actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02")
-    assert upload["with"]["path"] == "dist/*"
+    assert upload["with"]["path"] == ARTIFACT_ARCHIVE
     assert upload["with"]["if-no-files-found"] == "error"
     assert upload["with"]["overwrite"] is False
     assert build["outputs"] == {
         "source_sha": "${{ steps.source.outputs.sha }}",
         "artifact_id": "${{ steps.upload.outputs.artifact-id }}",
-        "artifact_digest": "${{ steps.upload.outputs.artifact-digest }}",
+        "artifact_digest": "${{ steps.bundle.outputs.sha256 }}",
+        "transport_digest": "${{ steps.upload.outputs.artifact-digest }}",
     }
 
     build_runs = "\n".join(step.get("run", "") for step in _steps(build))
     all_runs = "\n".join(step.get("run", "") for job in jobs.values() for step in _steps(job))
     source_index, source = _step(build, "Capture immutable source identity")
-    assert source["run"].count(HEAD_SOURCE_BINDING) == 1
+    assert _executable_lines(source["run"]).count(HEAD_SOURCE_BINDING) == 1
+    bundle_index, bundle = _step(build, "Bundle immutable release distributions")
+    assert bundle["id"] == "bundle"
+    assert _executable_lines(bundle["run"]).count(ARTIFACT_HASH_CAPTURE) == 1
     assert build_runs.count("python -m build") == 1
     assert all_runs.count("python -m build") == 1
-    assert all_runs.count("gh release upload") == 1
-    assert "--clobber" not in all_runs
+    gh_uploads = _actual_gh_uploads(jobs)
+    assert len(gh_uploads) == 1
+    assert gh_uploads[0][0] == "attach-github-release"
+    assert gh_uploads[0][2] == GH_UPLOAD_COMMAND
+    assert _actual_twine_uploads(jobs) == []
+    assert "--clobber" not in gh_uploads[0][2]
     assert source_index < upload_index
-    assert upload_index > 0
+    assert source_index < bundle_index < upload_index
 
     for job_name in ("publish-pypi", "attach-github-release"):
         job = jobs[job_name]
@@ -107,15 +170,21 @@ def _validate_release_contract(text: str) -> None:
         assert download["with"]["artifact-ids"] == (
             "${{ needs.build-release-artifact.outputs.artifact_id }}"
         )
-        assert download["with"]["path"] == "dist"
+        assert download["with"]["path"] == "release-artifact"
 
     publish = jobs["publish-pypi"]
     assert publish["permissions"] == {"contents": "read", "id-token": "write"}
     verify_pypi_index, verify_pypi = _step(publish, "Revalidate release immediately before PyPI")
     publish_steps = _steps(publish)
-    assert publish_steps[verify_pypi_index + 1]["uses"] == (
+    pypi_mutation = publish_steps[verify_pypi_index + 1]
+    assert pypi_mutation["uses"] == (
         "pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33"
     )
+    assert pypi_mutation["with"] == {
+        "packages-dir": "dist/",
+        "verbose": True,
+        "print-hash": True,
+    }
 
     attach = jobs["attach-github-release"]
     assert attach["permissions"] == {"contents": "write"}
@@ -125,14 +194,16 @@ def _validate_release_contract(text: str) -> None:
     attach_steps = _steps(attach)
     mutation = attach_steps[verify_gh_index + 1]
     assert mutation["name"] == "Attach exact release artifacts without clobber"
-    assert "gh release upload" in mutation["run"]
-    assert "--clobber" not in mutation["run"]
+    assert gh_uploads[0][1] is mutation
 
     for verify in (verify_pypi, verify_gh):
         assert verify["env"]["ARTIFACT_DIGEST"] == (
             "${{ needs.build-release-artifact.outputs.artifact_digest }}"
         )
         run = verify["run"]
+        executable = _executable_lines(run)
+        assert executable.count(DOWNLOADED_HASH_CAPTURE) == 1
+        assert executable.count(DOWNLOADED_HASH_BINDING) == 1
         for required in (
             "gh api",
             "git fetch",
@@ -178,6 +249,76 @@ def test_release_source_binding_ignores_comment_decoy():
 
     with pytest.raises(AssertionError):
         _validate_release_contract(tampered)
+
+
+@pytest.mark.parametrize(
+    "replacement",
+    [
+        '# gh release upload "$TAG" dist/* --repo "$GITHUB_REPOSITORY"',
+        'echo gh release upload "$TAG" dist/* --repo "$GITHUB_REPOSITORY"',
+    ],
+)
+def test_release_contract_rejects_non_executable_github_upload_decoys(replacement: str):
+    text = WORKFLOW.read_text(encoding="utf-8")
+    with pytest.raises(AssertionError):
+        _validate_release_contract(text.replace(GH_UPLOAD_COMMAND, replacement, 1))
+
+
+def test_release_contract_rejects_extra_twine_upload_mutation():
+    text = WORKFLOW.read_text(encoding="utf-8")
+    marker = "      - name: Publish exact artifact to PyPI\n"
+    mutation = "      - name: Shadow PyPI mutation\n        run: python -m twine upload dist/*\n"
+
+    with pytest.raises(AssertionError):
+        _validate_release_contract(text.replace(marker, mutation + marker, 1))
+
+
+def test_release_contract_rejects_commented_download_digest_binding():
+    text = WORKFLOW.read_text(encoding="utf-8")
+    tampered = text.replace(
+        f"          {DOWNLOADED_HASH_BINDING}\n",
+        f"          # {DOWNLOADED_HASH_BINDING}\n",
+        1,
+    )
+
+    with pytest.raises(AssertionError):
+        _validate_release_contract(tampered)
+
+
+def test_downloaded_archive_digest_binding_is_executable_and_fail_closed(tmp_path: Path):
+    workflow = _load_workflow(WORKFLOW.read_text(encoding="utf-8"))
+    _, verify = _step(
+        workflow["jobs"]["publish-pypi"],
+        "Revalidate release immediately before PyPI",
+    )
+    executable = _executable_lines(verify["run"])
+    digest_script = "\n".join(
+        line for line in executable if line in {DOWNLOADED_HASH_CAPTURE, DOWNLOADED_HASH_BINDING}
+    )
+    archive = tmp_path / "release-artifact" / ARTIFACT_ARCHIVE
+    archive.parent.mkdir()
+    archive.write_bytes(b"immutable release distributions")
+    environment = os.environ.copy()
+    environment["ARTIFACT_DIGEST"] = hashlib.sha256(archive.read_bytes()).hexdigest()
+
+    verified = subprocess.run(
+        [_bash_executable(), "--noprofile", "--norc", "-euo", "pipefail", "-c", digest_script],
+        cwd=tmp_path,
+        env=environment,
+        text=True,
+        capture_output=True,
+    )
+    assert verified.returncode == 0, verified.stderr
+
+    archive.write_bytes(b"tampered release distributions")
+    rejected = subprocess.run(
+        [_bash_executable(), "--noprofile", "--norc", "-euo", "pipefail", "-c", digest_script],
+        cwd=tmp_path,
+        env=environment,
+        text=True,
+        capture_output=True,
+    )
+    assert rejected.returncode != 0
 
 
 def test_release_contract_rejects_duplicate_mapping_key():

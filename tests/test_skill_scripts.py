@@ -4,6 +4,8 @@ from unittest import mock
 
 import pytest
 
+SKILLS_ROOT = Path(__file__).parents[1] / "src" / "dcc_mcp_illustrator" / "skills"
+
 
 @pytest.mark.parametrize(
     ("skill", "script", "operation_name", "arguments"),
@@ -105,3 +107,14 @@ def test_parameterized_skill_script_forwards_arguments(
 
     assert result["success"] is True
     operation.assert_called_once_with(**arguments)
+
+
+@pytest.mark.parametrize(
+    "skill",
+    ["illustrator-artwork", "illustrator-document", "illustrator-export"],
+)
+def test_public_skill_declares_supported_core_range(skill: str):
+    text = (SKILLS_ROOT / skill / "SKILL.md").read_text(encoding="utf-8")
+
+    assert "dcc-mcp-core >=0.20.14,<1.0.0" in text
+    assert "dcc-mcp-core 0.19+" not in text
