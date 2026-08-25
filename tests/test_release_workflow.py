@@ -35,6 +35,12 @@ PINNED_ACTIONS = {
     "actions/download-artifact": "d3f86a106a0bac45b974a628896c90dbdf5c8093",
     "pypa/gh-action-pypi-publish": "dc37677b2e1c63e2034f94d8a5b11f265b73ba33",
 }
+EXPECTED_RELEASE_JOBS = {
+    "release-please",
+    "build-release-artifact",
+    "publish-pypi",
+    "attach-github-release",
+}
 
 
 class _UniqueKeyLoader(yaml.SafeLoader):
@@ -123,6 +129,8 @@ def _validate_release_contract(text: str) -> None:
     workflow = _load_workflow(text)
     assert workflow["permissions"] == {}
     jobs = workflow["jobs"]
+    assert set(jobs) == EXPECTED_RELEASE_JOBS
+    assert "needs" not in jobs["release-please"]
     assert all(1 <= job["timeout-minutes"] <= 30 for job in jobs.values())
     for job_name, job in jobs.items():
         _assert_unique_steps(job_name, job)
@@ -160,6 +168,21 @@ def _validate_release_contract(text: str) -> None:
     assert source_index < upload_index
     assert source_index < bundle_index < upload_index
 
+    artifact_actions = [
+        (job_name, step)
+        for job_name, job in jobs.items()
+        for step in _steps(job)
+        if step.get("uses")
+        in {
+            "actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02",
+            "actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093",
+        }
+    ]
+    upload_actions = [item for item in artifact_actions if item[1].get("uses") == upload["uses"]]
+    assert upload_actions == [("build-release-artifact", upload)]
+
+    expected_downloads = {}
+
     for job_name in ("publish-pypi", "attach-github-release"):
         job = jobs[job_name]
         assert set(job["needs"]) == {"release-please", "build-release-artifact"}
@@ -171,6 +194,17 @@ def _validate_release_contract(text: str) -> None:
             "${{ needs.build-release-artifact.outputs.artifact_id }}"
         )
         assert download["with"]["path"] == "release-artifact"
+        expected_downloads[job_name] = download
+
+    download_actions = [
+        item
+        for item in artifact_actions
+        if item[1].get("uses")
+        == "actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093"
+    ]
+    assert len(download_actions) == 2
+    assert {job_name for job_name, _ in download_actions} == set(expected_downloads)
+    assert all(step is expected_downloads[job_name] for job_name, step in download_actions)
 
     publish = jobs["publish-pypi"]
     assert publish["permissions"] == {"contents": "read", "id-token": "write"}
@@ -345,6 +379,43 @@ def test_release_contract_rejects_duplicate_and_unbound_upload_mutations():
         _validate_release_contract(text.replace(marker, duplicate + marker, 1))
     with pytest.raises(AssertionError):
         _validate_release_contract(text.replace(marker, unbound + marker, 1))
+
+
+def test_release_contract_rejects_shadow_artifact_consumer_job():
+    text = WORKFLOW.read_text(encoding="utf-8")
+    shadow = """  shadow-consumer:
+    needs: [release-please, build-release-artifact]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - name: Download shadow release artifact
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          artifact-ids: ${{ needs.build-release-artifact.outputs.artifact_id }}
+          path: release-artifact
+
+"""
+
+    with pytest.raises(AssertionError):
+        _validate_release_contract(
+            text.replace("  publish-pypi:\n", shadow + "  publish-pypi:\n", 1)
+        )
+
+
+def test_release_contract_rejects_second_download_in_github_consumer():
+    text = WORKFLOW.read_text(encoding="utf-8")
+    marker = "      - name: Revalidate release immediately before GitHub upload\n"
+    duplicate = """      - name: Download shadow release artifact
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          artifact-ids: ${{ needs.build-release-artifact.outputs.artifact_id }}
+          path: release-artifact-copy
+"""
+
+    with pytest.raises(AssertionError):
+        _validate_release_contract(text.replace(marker, duplicate + marker, 1))
 
 
 def _git(cwd: Path, *args: str) -> str:
