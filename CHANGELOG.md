@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.3.0](https://github.com/dcc-mcp/dcc-mcp-illustrator/compare/v0.2.0...v0.3.0) (2026-08-25)
+
+
+### Features
+
+* add Illustrator install lifecycle ([d39ba1e](https://github.com/dcc-mcp/dcc-mcp-illustrator/commit/d39ba1e7790cd14d8decc1178892d5f78554ec07))
+
+
+### Bug Fixes
+
+* harden Illustrator install lifecycle ([242f32a](https://github.com/dcc-mcp/dcc-mcp-illustrator/commit/242f32a471f9c8dec142af25509ef73ed0e266ce))
+* make lifecycle path assertion portable ([7d2beab](https://github.com/dcc-mcp/dcc-mcp-illustrator/commit/7d2beabfa59382acfa997838baf46566c61d1ebf))
+
 ## [0.2.0](https://github.com/dcc-mcp/dcc-mcp-illustrator/compare/v0.1.1...v0.2.0) (2026-08-12)
 
 
