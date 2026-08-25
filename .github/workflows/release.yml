@@ -60,6 +60,7 @@ jobs:
           git fetch --force --no-tags origin "refs/tags/$TAG:refs/tags/$TAG"
           source_sha="$(git rev-parse "$TAG^{commit}")"
           [[ "$source_sha" =~ ^[0-9a-f]{40}$ ]]
+          test "$(git rev-parse HEAD)" = "$source_sha"
           echo "sha=$source_sha" >> "$GITHUB_OUTPUT"
       - name: Install build tooling
         run: python -m pip install --upgrade pip build twine
