@@ -2,7 +2,7 @@
 name: illustrator-document
 description: Create and inspect Illustrator documents, artboards, layers, selections, vector items, linked artwork, text, stories, and swatches through typed adobepy facades.
 license: MIT
-compatibility: "Illustrator CEP/ExtendScript; dcc-mcp-core 0.19+"
+compatibility: "Illustrator CEP/ExtendScript; dcc-mcp-core >=0.20.14,<1.0.0"
 allowed-tools: Python
 metadata:
   dcc-mcp:

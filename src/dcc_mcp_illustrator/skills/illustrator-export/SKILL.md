@@ -2,7 +2,7 @@
 name: illustrator-export
 description: Save and export Illustrator documents through typed adobepy facades with explicit absolute paths and format options.
 license: MIT
-compatibility: "Illustrator CEP/ExtendScript; dcc-mcp-core 0.19+"
+compatibility: "Illustrator CEP/ExtendScript; dcc-mcp-core >=0.20.14,<1.0.0"
 allowed-tools: Python
 metadata:
   dcc-mcp:

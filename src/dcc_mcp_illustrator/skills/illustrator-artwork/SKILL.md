@@ -2,7 +2,7 @@
 name: illustrator-artwork
 description: Create and inspect Illustrator artwork, edit text frames, and update path geometry and transforms through typed adobepy facades.
 license: MIT
-compatibility: "Illustrator CEP/ExtendScript; dcc-mcp-core 0.19+"
+compatibility: "Illustrator CEP/ExtendScript; dcc-mcp-core >=0.20.14,<1.0.0"
 allowed-tools: Python
 metadata:
   dcc-mcp:
