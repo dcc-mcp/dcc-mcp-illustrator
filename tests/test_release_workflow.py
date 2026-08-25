@@ -194,6 +194,7 @@ def _validate_release_contract(text: str) -> None:
             "${{ needs.build-release-artifact.outputs.artifact_id }}"
         )
         assert download["with"]["path"] == "release-artifact"
+        assert download["with"].get("merge-multiple") is True
         expected_downloads[job_name] = download
 
     download_actions = [
@@ -265,6 +266,51 @@ def _validate_release_contract(text: str) -> None:
 
 def test_release_workflow_builds_once_and_reuses_one_identity_bound_artifact():
     _validate_release_contract(WORKFLOW.read_text(encoding="utf-8"))
+
+
+@pytest.mark.parametrize("job_name", ["publish-pypi", "attach-github-release"])
+def test_download_contract_flattens_artifact_for_consumer_path(job_name: str, tmp_path: Path):
+    workflow = _load_workflow(WORKFLOW.read_text(encoding="utf-8"))
+    _, download = _step(
+        workflow["jobs"][job_name],
+        "Download immutable release artifact",
+    )
+    destination = tmp_path / download["with"]["path"]
+    if download["with"].get("merge-multiple") is not True:
+        destination /= "release-distributions-transport"
+    destination.mkdir(parents=True)
+    (destination / ARTIFACT_ARCHIVE).write_bytes(b"immutable release distributions")
+
+    assert (tmp_path / "release-artifact" / ARTIFACT_ARCHIVE).is_file()
+
+
+@pytest.mark.parametrize(
+    "replacement",
+    [
+        "",
+        "          merge-multiple: false\n",
+        '          merge-multiple: "true"\n',
+        "          # merge-multiple: true\n",
+    ],
+)
+def test_release_contract_rejects_missing_false_or_decoy_flattening(replacement: str):
+    text = WORKFLOW.read_text(encoding="utf-8")
+
+    with pytest.raises(AssertionError):
+        _validate_release_contract(text.replace("          merge-multiple: true\n", replacement, 1))
+
+
+def test_release_contract_rejects_flattening_on_wrong_action():
+    text = WORKFLOW.read_text(encoding="utf-8")
+    tampered = text.replace("          merge-multiple: true\n", "", 1)
+    tampered = tampered.replace(
+        "          overwrite: false\n",
+        "          overwrite: false\n          merge-multiple: true\n",
+        1,
+    )
+
+    with pytest.raises(AssertionError):
+        _validate_release_contract(tampered)
 
 
 def test_release_contract_ignores_adversarial_comment_and_decoy_text():
