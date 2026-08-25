@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.1](https://github.com/dcc-mcp/dcc-mcp-illustrator/compare/v0.3.0...v0.3.1) (2026-08-25)
+
+
+### Bug Fixes
+
+* flatten release artifact downloads ([49dbe4b](https://github.com/dcc-mcp/dcc-mcp-illustrator/commit/49dbe4b3579c2de6a2fd805efd87d6b2764471cb))
+
 ## [0.3.0](https://github.com/dcc-mcp/dcc-mcp-illustrator/compare/v0.2.0...v0.3.0) (2026-08-25)
 
 
