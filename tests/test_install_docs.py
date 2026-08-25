@@ -29,6 +29,8 @@ def test_root_install_guide_documents_canonical_lifecycle_and_platform_truth():
     assert "--token" not in text
     assert "directly_usable" in text
     assert "CEP" in text
+    assert "audited checksum and package-owned release map" in text
+    assert "signed adobepy" not in text.lower()
 
 
 def test_readme_routes_installation_to_the_canonical_guide_without_token_argv():

@@ -1,7 +1,10 @@
+import importlib.metadata
 import re
 from pathlib import Path
 
 import yaml
+from packaging.requirements import Requirement
+from packaging.version import Version
 
 from dcc_mcp_illustrator import __version__
 
@@ -25,6 +28,45 @@ def test_ci_inspects_built_lifecycle_payload():
         encoding="utf-8"
     )
     assert "python tools/check_distribution.py" in workflow
+
+
+def test_distribution_binds_audited_adobepy_and_compatible_core_range():
+    requirements = {
+        Requirement(item).name: Requirement(item)
+        for item in importlib.metadata.requires("dcc-mcp-illustrator") or ()
+        if "extra ==" not in item
+    }
+
+    assert str(requirements["adobepy"].specifier) == "==0.8.0"
+    assert requirements["adobepy"].specifier.contains(
+        Version(importlib.metadata.version("adobepy")), prereleases=False
+    )
+    assert str(requirements["dcc-mcp-core"].specifier) in {
+        "<1.0.0,>=0.20.14",
+        ">=0.20.14,<1.0.0",
+    }
+    assert requirements["dcc-mcp-core"].specifier.contains(
+        Version(importlib.metadata.version("dcc-mcp-core")), prereleases=False
+    )
+
+
+def test_ci_has_bounded_jobs_and_explicit_floor_and_latest_core_lanes():
+    workflow = yaml.safe_load(
+        (Path(__file__).parents[1] / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
+    )
+
+    assert all(1 <= job["timeout-minutes"] <= 30 for job in workflow["jobs"].values())
+    compatibility = workflow["jobs"]["dependency-compatibility"]
+    assert compatibility["strategy"]["matrix"]["core-spec"] == [
+        "dcc-mcp-core==0.20.14",
+        "dcc-mcp-core>=0.20.14,<1.0.0",
+    ]
+    runs = "\n".join(
+        step.get("run", "") for step in compatibility["steps"] if isinstance(step, dict)
+    )
+    assert 'python -m pip install --upgrade "${{ matrix.core-spec }}"' in runs
+    assert "python -m pip check" in runs
+    assert "python tools/check_dependencies.py" in runs
 
 
 def test_flow_mapping_descriptions_do_not_create_phantom_schema_keywords():

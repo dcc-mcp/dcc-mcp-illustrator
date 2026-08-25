@@ -19,7 +19,7 @@ classifiers = [
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
 ]
-dependencies = ["adobepy>=0.6.2,<1.0.0", "dcc-mcp-core>=0.20.14,<1.0.0", "packaging>=24"]
+dependencies = ["adobepy==0.8.0", "dcc-mcp-core>=0.20.14,<1.0.0", "packaging>=24"]
 
 [project.urls]
 Homepage = "https://github.com/dcc-mcp/dcc-mcp-illustrator"
