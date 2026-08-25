@@ -10,8 +10,9 @@ and reports success only after a real typed Illustrator readiness call.
 - `dcc-mcp-core` 0.20.14 or newer. The adapter validates every lifecycle result
   against the canonical Draft 2020-12 Install SOP v1 schema shipped by Core.
 - Illustrator 23.0 / CC 2019 or newer.
-- An official checksum-pinned `adobepy` 0.6.2 Windows x64 runtime bundle
-  containing the broker executable and built Illustrator CEP bridge. The
+- The `adobepy` 0.8.0 Windows x64 runtime bundle, accepted only through this
+  adapter's audited checksum and package-owned release map. The bundle contains
+  the broker executable and built Illustrator CEP bridge. The
   Python wheel alone does not contain that runtime. Other platforms currently
   fail closed until an equally attestable release artifact exists.
 - A private `ADOBEPY_TOKEN` set in the environment used by the broker,
@@ -161,7 +162,8 @@ compatible runtime; no adapter cache or unpinned binary download is used.
 
 ### Exit 40: broker, CEP session, or typed RPC unavailable
 
-Install a compatible signed adobepy release that implements the bounded
+Install a compatible adobepy release covered by the adapter's audited checksum
+and package-owned release map that implements the bounded
 Illustrator bootstrap and exact runtime identity contract, then execute the
 returned bootstrap action and exact verify continuation. A reachable port or a
 manually opened UI is insufficient: the exact CEP session, process identity,

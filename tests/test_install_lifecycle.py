@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+import importlib.metadata
 import json
 import subprocess
 import sys
@@ -53,7 +54,7 @@ def resolved_install(tmp_path: Path, secret: str = "bridge-token-secret") -> Res
     host = tmp_path / "Adobe Illustrator 2024" / "Support Files" / "Illustrator.exe"
     host.parent.mkdir(parents=True)
     host.write_bytes(b"host")
-    bridge_bundle = tmp_path / "adobepy-0.6.2-windows-x64"
+    bridge_bundle = tmp_path / "adobepy-0.8.0-windows-x64"
     bridge_cli = bridge_bundle / "bin" / "adobepy.exe"
     bridge_cli.parent.mkdir(parents=True)
     bridge_cli.write_bytes(b"cli")
@@ -62,7 +63,7 @@ def resolved_install(tmp_path: Path, secret: str = "bridge-token-secret") -> Res
         json.dumps(
             {
                 "name": "adobepy",
-                "version": "0.6.2",
+                "version": "0.8.0",
                 "runtime": "windows-x64",
                 "includes": ["bin/adobepy.exe"],
             }
@@ -76,7 +77,7 @@ def resolved_install(tmp_path: Path, secret: str = "bridge-token-secret") -> Res
         host_version="24.6",
         python_path=Path(sys.executable),
         python_version="3.12.10",
-        core_version="0.20.14",
+        core_version=importlib.metadata.version("dcc-mcp-core"),
         extension_path=tmp_path / "CEP" / "extensions" / "com.adobepy.bridge.illustrator",
         receipt_path=tmp_path / "state" / "receipts" / "illustrator.json",
         bootstrap_error_path=tmp_path / "state" / "bootstrap-errors.json",
@@ -86,7 +87,7 @@ def resolved_install(tmp_path: Path, secret: str = "bridge-token-secret") -> Res
         target="default",
         bridge_identity={
             "executable": str(bridge_cli.resolve()),
-            "version": "0.6.2",
+            "version": "0.8.0",
             "runtime": "windows-x64",
             "bytes": len(cli_bytes),
             "sha256": hashlib.sha256(cli_bytes).hexdigest(),
@@ -112,7 +113,7 @@ def healthy_dependencies(runner: BridgeRunner) -> LifecycleDependencies:
                 "bridge_kind": "cep",
                 "target": resolved.target,
                 "host_version": resolved.host_version,
-                "bridge_version": "0.6.2",
+                "bridge_version": "0.8.0",
                 "host_pid": host_pid,
                 "process_start_identity": "test-host-start:41001",
                 "process_executable": str(resolved.host_path),
@@ -125,7 +126,7 @@ def healthy_dependencies(runner: BridgeRunner) -> LifecycleDependencies:
                     "pid": broker_pid,
                     "process_start_identity": "test-broker-start:41002",
                     "executable": str(resolved.adobepy_cli),
-                    "version": "0.6.2",
+                    "version": "0.8.0",
                     "instance_id": "adobepy-test-instance",
                 },
             },

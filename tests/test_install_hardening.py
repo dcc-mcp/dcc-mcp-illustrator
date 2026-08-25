@@ -554,6 +554,18 @@ def test_bridge_cli_requires_audited_release_manifest(tmp_path: Path) -> None:
     assert _resolve_bridge_cli({"ADOBEPY_CLI": str(arbitrary)}) is None
 
 
+def test_current_adobepy_release_is_bound_to_audited_public_artifact() -> None:
+    assert install_discovery._PUBLISHED_ADOBEPY_RELEASES[("0.8.0", "windows-x64")] == {
+        "cli_sha256": "eaefea9d8a0921898157fba08cf5ae5a12108b17030c2c03f164450d03521ab1",
+        "cli_bytes": "3595264",
+        "manifest_sha256": "c8f6dac5dfbc5a71258439869026dd9680b5bc469b0ff09a4e5ad4e0000ef3ac",
+        "manifest_bytes": "663",
+        "archive_sha256": "b8633dbb093ee0b864057da4ded243aeb2359fead3a732d967304e3beb2da73e",
+        "release_tag": "adobepy-v0.8.0",
+        "asset": "adobepy-0.8.0-windows-x64.zip",
+    }
+
+
 def test_adjacent_manifest_cannot_authenticate_arbitrary_adobepy_cli(tmp_path: Path) -> None:
     cli = _release_cli(tmp_path)
     digest = hashlib.sha256(cli.read_bytes()).hexdigest()
@@ -657,7 +669,7 @@ def test_public_preflight_binds_host_python_core_schema_and_cli_provenance(
     assert resolved.host_version == "24.0"
     assert set(resolved.python_modules) == {"adapter", "core", "adobepy"}
     assert all(module["owned"] is True for module in resolved.python_modules.values())
-    assert resolved.core_version == "0.20.14"
+    assert resolved.core_version == importlib.metadata.version("dcc-mcp-core")
     assert resolved.bridge_identity["executable"] == str(resolved.adobepy_cli)
     assert len(resolved.bridge_identity["sha256"]) == 64
     assert resolved.target == "illustrator-test"
@@ -983,9 +995,9 @@ def test_acquire_failure_has_pinned_executable_windows_remediation(
         "-NonInteractive",
         "-Command",
     ]
-    assert "adobepy-v0.6.2" in acquire[4]
-    assert "9ef9abb5e034359f12e9ce248b0030e38d34c76df343eb2713f18036068719a7" in acquire[4]
-    assert "c02f28f07705b69a4f97f9f6639f0f80d1f5292115446801fbd92423336301aa" in acquire[4]
+    assert "adobepy-v0.8.0" in acquire[4]
+    assert "b8633dbb093ee0b864057da4ded243aeb2359fead3a732d967304e3beb2da73e" in acquire[4]
+    assert "eaefea9d8a0921898157fba08cf5ae5a12108b17030c2c03f164450d03521ab1" in acquire[4]
     assert retry == [
         "dcc-mcp-illustrator",
         "install",
