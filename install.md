@@ -6,6 +6,28 @@ and reports success only after a real typed Illustrator readiness call.
 
 ## Requirements
 
+### Internal prebuilt bridge link
+
+For an Internal workstation image with an approved prebuilt CEP bridge, the
+shared Core CLI can create an idempotent link in the Adobe CEP extension root:
+
+```powershell
+dcc-mcp-cli install --dcc-type illustrator `
+  --plugin-source <cep-bridge-root> `
+  --adobe-debug-root "$env:APPDATA\Adobe\CEP\extensions" `
+  --execute
+```
+
+The source must be the bridge root and contain its manifest. An approved
+catalog or Internal descriptor supplies the product, extension type, plugin ID,
+and source mapping; the public adapter package does not claim to package a
+static `illustrator_cep` source tree. Set `DCC_MCP_PLUGIN_SOURCE` and
+`DCC_MCP_ADOBE_DEBUG_ROOT` in stable profiles. A filesystem link is not proof
+of a loaded bridge, so restart Illustrator if needed and run
+`dcc-mcp-cli wait-ready --dcc-type illustrator` plus the adapter verification.
+The adapter-owned lifecycle below remains canonical for generated bridges,
+receipts, upgrades, and uninstall.
+
 - Python 3.9 or newer for the adapter process.
 - `dcc-mcp-core` 0.20.14 or newer. The adapter validates every lifecycle result
   against the canonical Draft 2020-12 Install SOP v1 schema shipped by Core.
