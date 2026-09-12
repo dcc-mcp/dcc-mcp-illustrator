@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.2](https://github.com/dcc-mcp/dcc-mcp-illustrator/compare/v0.3.1...v0.3.2) (2026-09-12)
+
+
+### Documentation
+
+* document Adobe debug bridge links ([#13](https://github.com/dcc-mcp/dcc-mcp-illustrator/issues/13)) ([f2b239c](https://github.com/dcc-mcp/dcc-mcp-illustrator/commit/f2b239cae680d751aa72513bf976ae15a3d1b139))
+
 ## [0.3.1](https://github.com/dcc-mcp/dcc-mcp-illustrator/compare/v0.3.0...v0.3.1) (2026-08-25)
 
 
