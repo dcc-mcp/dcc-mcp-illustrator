@@ -19,6 +19,23 @@ dcc-mcp-illustrator install --json --dry-run --dcc-path "$ILLUSTRATOR_EXE" --pyt
 dcc-mcp-illustrator install --json --yes --dcc-path "$ILLUSTRATOR_EXE" --python "$PYTHON_EXE"
 ```
 
+For an Internal deployment with an approved prebuilt CEP bridge, the shared
+Core CLI can link the bridge directly into Illustrator's CEP extension root:
+
+```powershell
+dcc-mcp-cli install --dcc-type illustrator `
+  --plugin-source F:\studio\artifacts\illustrator-cep-bridge `
+  --adobe-debug-root "$env:APPDATA\Adobe\CEP\extensions" `
+  --execute
+```
+
+The bridge root must contain its manifest and be selected by an approved
+catalog or Internal descriptor. This path creates an idempotent directory link
+without copying files or using a Developer Tool. The adapter-owned lifecycle
+remains canonical for generated bridges, receipts, upgrades, and uninstall.
+Restart Illustrator if it has cached the extension, then verify with
+`dcc-mcp-cli wait-ready --dcc-type illustrator` and the adapter status command.
+
 Set `ADOBEPY_TOKEN` in the environment shared by the broker, installer, and
 adapter, and set the two path variables as shown in the platform-specific guide.
 The lifecycle never accepts the token in process arguments. It reports
