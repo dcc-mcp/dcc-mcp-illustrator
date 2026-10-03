@@ -9,7 +9,33 @@ from pathlib import Path
 
 from dcc_mcp_core.deployment import install_sop as _install_sop
 
-SCHEMA_VERSION = _install_sop.INSTALL_SOP_SCHEMA_VERSION
+
+def _report_schema_version() -> int:
+    """Return the value every report document's ``schema_version`` field must carry.
+
+    This is an independent counter from the published schema *artifact* revision.
+    ``INSTALL_SOP_SCHEMA_VERSION`` (now ``INSTALL_SOP_SCHEMA_REVISION``) names
+    the artifact and is 2 since core 0.20.34, while the artifact pins a report's
+    ``schema_version`` to 1 because revisions only add optional members.
+    Emitting the artifact revision made every status/verify/install report fail
+    validation against the very schema it claims to follow, so read the value
+    from the schema instead of copying the artifact revision.
+
+    Core 0.20.41 answers this directly with
+    ``install_sop_report_schema_version()``. Cores in the supported range below
+    that expose only ``load_install_sop_schema``, whose ``const`` is the same
+    answer read one level down, so the fallback keeps the declared floor working.
+    """
+    reader = getattr(_install_sop, "install_sop_report_schema_version", None)
+    if callable(reader):
+        return int(reader())
+    loader = getattr(_install_sop, "load_install_sop_schema", None)
+    if callable(loader):
+        return int(loader()["properties"]["schema_version"]["const"])
+    return 1
+
+
+SCHEMA_VERSION = _report_schema_version()
 EXIT_OK = _install_sop.INSTALL_EXIT_OK
 EXIT_PREFLIGHT = _install_sop.INSTALL_EXIT_PREFLIGHT
 EXIT_ACQUIRE = _install_sop.INSTALL_EXIT_ACQUIRE
@@ -17,8 +43,17 @@ EXIT_INSTALL = _install_sop.INSTALL_EXIT_INSTALL
 EXIT_VERIFY = _install_sop.INSTALL_EXIT_VERIFY
 EXIT_REQUIRES_RESTART = _install_sop.INSTALL_EXIT_REQUIRES_RESTART
 INSTALL_SOP_SCHEMA_ID = "https://dcc-mcp.github.io/schemas/adapter-install-sop-v1.schema.json"
-INSTALL_SOP_SCHEMA_SIZE = 4_261
-INSTALL_SOP_SCHEMA_SHA256 = "3ca25788439917b4d4c0617230a762f9797756b5b54f45c8c4149f975b90f904"
+
+# Every published revision of that artifact this adapter accepts, as
+# ``(size, sha256)`` pairs. Core 0.20.30 rewrote ``-v1`` in place -- same ``$id``,
+# different bytes -- so the id alone no longer names one byte sequence: releases
+# up to 0.20.29 ship 4261 bytes, and 0.20.30 and later ship the frozen 4899-byte
+# copy. Accepting both keeps the declared core range installable while still
+# refusing any byte sequence this adapter has not reviewed.
+INSTALL_SOP_SCHEMA_ANCHORS = (
+    (4_261, "3ca25788439917b4d4c0617230a762f9797756b5b54f45c8c4149f975b90f904"),
+    (4_899, "2b3a8a101384a5163c7569c4a2b0de6586c672c5ee291735f94334a33b7d37a0"),
+)
 INSTALL_EXIT_OK = EXIT_OK
 INSTALL_EXIT_PREFLIGHT = EXIT_PREFLIGHT
 INSTALL_EXIT_ACQUIRE = EXIT_ACQUIRE
@@ -85,9 +120,8 @@ __all__ = [
     "EXIT_PREFLIGHT",
     "EXIT_REQUIRES_RESTART",
     "EXIT_VERIFY",
+    "INSTALL_SOP_SCHEMA_ANCHORS",
     "INSTALL_SOP_SCHEMA_ID",
-    "INSTALL_SOP_SCHEMA_SHA256",
-    "INSTALL_SOP_SCHEMA_SIZE",
     "INSTALL_EXIT_ACQUIRE",
     "INSTALL_EXIT_INSTALL",
     "INSTALL_EXIT_OK",

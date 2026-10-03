@@ -8,7 +8,27 @@ import sys
 
 from jsonschema import Draft202012Validator
 
-from dcc_mcp_illustrator.install_contract import redact_payload
+from dcc_mcp_illustrator.install_contract import SCHEMA_VERSION, redact_payload
+
+
+def test_report_schema_version_is_the_value_the_published_schema_pins() -> None:
+    """The report field tracks the schema's ``const``, not the artifact revision.
+
+    ``INSTALL_SOP_SCHEMA_VERSION``/``INSTALL_SOP_SCHEMA_REVISION`` count
+    published schema *artifacts* and move when core ships ``-v(N+1)``, while the
+    value the artifact pins on a report document stays put because revisions only
+    add optional members. Reading the const here turns a core that drifts into a
+    red build instead of reports that fail validation in a user's install.
+    """
+    from dcc_mcp_core.deployment import install_sop
+
+    reader = getattr(install_sop, "install_sop_report_schema_version", None)
+    published = int(reader()) if callable(reader) else None
+    if published is None:
+        loader = getattr(install_sop, "load_install_sop_schema", None)
+        published = int(loader()["properties"]["schema_version"]["const"])
+
+    assert SCHEMA_VERSION == published
 
 
 def test_public_status_reports_machine_readable_not_installed_contract(tmp_path):
