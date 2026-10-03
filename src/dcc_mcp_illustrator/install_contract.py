@@ -25,13 +25,30 @@ def _report_schema_version() -> int:
     ``install_sop_report_schema_version()``. Cores in the supported range below
     that expose only ``load_install_sop_schema``, whose ``const`` is the same
     answer read one level down, so the fallback keeps the declared floor working.
+
+    Neither read may propagate: a partially installed, tampered, or otherwise
+    unhealthy Core is exactly the situation this CLI exists to report on, so a
+    failure to read the document degrades to ``1`` rather than raising at import.
     """
+    # ``KeyError`` is how a misshapen document reports itself -- it is what the
+    # bare ``loader()[...][...][...]`` chain below raises when ``properties``,
+    # ``schema_version`` or ``const`` is absent. Catching it keeps the existing
+    # silent-degradation contract instead of letting an import-time error take
+    # the whole CLI down. Deliberately no logging here: the local path already
+    # degraded silently to the fallback before this change.
     reader = getattr(_install_sop, "install_sop_report_schema_version", None)
     if callable(reader):
-        return int(reader())
+        try:
+            return int(reader())
+        except (RuntimeError, OSError, ValueError, TypeError, KeyError):
+            # Fall through to the local read rather than losing the report.
+            pass
     loader = getattr(_install_sop, "load_install_sop_schema", None)
     if callable(loader):
-        return int(loader()["properties"]["schema_version"]["const"])
+        try:
+            return int(loader()["properties"]["schema_version"]["const"])
+        except (RuntimeError, OSError, ValueError, TypeError, KeyError):
+            return 1
     return 1
 
 
