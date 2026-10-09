@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.3.2](https://github.com/dcc-mcp/dcc-mcp-illustrator/compare/v0.3.1...v0.3.2) (2026-10-09)
+
+
+### Bug Fixes
+
+* emit the Install SOP report schema version, not the artifact revision ([#15](https://github.com/dcc-mcp/dcc-mcp-illustrator/issues/15)) ([0b7d149](https://github.com/dcc-mcp/dcc-mcp-illustrator/commit/0b7d149feae6a57264c14e5e8a8ec035201a0cfd))
+
+
+### Documentation
+
+* document Adobe debug bridge links ([#13](https://github.com/dcc-mcp/dcc-mcp-illustrator/issues/13)) ([f2b239c](https://github.com/dcc-mcp/dcc-mcp-illustrator/commit/f2b239cae680d751aa72513bf976ae15a3d1b139))
+
 ## [0.3.1](https://github.com/dcc-mcp/dcc-mcp-illustrator/compare/v0.3.0...v0.3.1) (2026-08-25)
 
 
