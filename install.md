@@ -32,7 +32,7 @@ receipts, upgrades, and uninstall.
 - `dcc-mcp-core` 0.20.14 or newer. The adapter validates every lifecycle result
   against the canonical Draft 2020-12 Install SOP v1 schema shipped by Core.
 - Illustrator 23.0 / CC 2019 or newer.
-- The `adobepy` 0.8.0 Windows x64 runtime bundle, accepted only through this
+- The `adobepy` 0.12.0 Windows x64 runtime bundle, accepted only through this
   adapter's audited checksum and package-owned release map. The bundle contains
   the broker executable and built Illustrator CEP bridge. The
   Python wheel alone does not contain that runtime. Other platforms currently
@@ -133,13 +133,18 @@ Verification is ordered and fail-closed:
 5. call the existing typed Illustrator readiness probe, including the real host
    version RPC.
 
-Only all five passing produces `directly_usable: true`. The published adobepy
-runtime does not yet provide the exact Illustrator PID/start/executable/profile/
-CEP-origin attestation required by this verifier; that bounded dependency is
-tracked in `dcc-mcp/adobepy#70`, so readiness remains fail-closed until a
-compatible release is installed. This repository's CI uses a synthetic CEP
-profile and injected typed probes; it does not claim a licensed live Illustrator
-host on GitHub runners.
+Only all five passing produces `directly_usable: true`. The adapter consumes the
+validated `RuntimeIdentityAttestation` returned by adobepy 0.12.0 and preserves
+independent host/broker PID, canonical start token, path, version, profile, and
+CEP-origin checks. The official CEP layout uses `CSXS/manifest.xml`.
+
+adobepy 0.12.0 supplies the Illustrator CEP bootstrap API, but this adapter's
+install transaction does not yet invoke its launch-receipt bootstrap flow.
+Installing the bridge alone therefore does not establish verified live readiness;
+a missing trusted attestation remains fail-closed. CI exercises the published
+SDK against synthetic broker responses and process observations, not a
+licensed live Illustrator host. Integrating and validating the bootstrap transaction is
+still required before claiming automatic install-to-ready support.
 
 ## Upgrade
 
