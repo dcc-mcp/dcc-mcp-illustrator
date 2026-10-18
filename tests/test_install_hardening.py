@@ -555,14 +555,14 @@ def test_bridge_cli_requires_audited_release_manifest(tmp_path: Path) -> None:
 
 
 def test_current_adobepy_release_is_bound_to_audited_public_artifact() -> None:
-    assert install_discovery._PUBLISHED_ADOBEPY_RELEASES[("0.8.0", "windows-x64")] == {
-        "cli_sha256": "eaefea9d8a0921898157fba08cf5ae5a12108b17030c2c03f164450d03521ab1",
-        "cli_bytes": "3595264",
-        "manifest_sha256": "c8f6dac5dfbc5a71258439869026dd9680b5bc469b0ff09a4e5ad4e0000ef3ac",
-        "manifest_bytes": "663",
-        "archive_sha256": "b8633dbb093ee0b864057da4ded243aeb2359fead3a732d967304e3beb2da73e",
-        "release_tag": "adobepy-v0.8.0",
-        "asset": "adobepy-0.8.0-windows-x64.zip",
+    assert install_discovery._PUBLISHED_ADOBEPY_RELEASES[("0.12.0", "windows-x64")] == {
+        "cli_sha256": "5ab96c36a913bd39a30af5d77ee3af17e5e080a50d1a27823be97a4eee67bf0d",
+        "cli_bytes": "4945920",
+        "manifest_sha256": "9a19ef5517e570070f20d95d876dd68c5cc6f0073c04a0855e2b7f095060713a",
+        "manifest_bytes": "815",
+        "archive_sha256": "b7c4923b474f01447f6f05666a8bd48c0beb4e0b7409b2842e1b506d1f12b48a",
+        "release_tag": "adobepy-v0.12.0",
+        "asset": "adobepy-0.12.0-windows-x64.zip",
     }
 
 
@@ -995,9 +995,9 @@ def test_acquire_failure_has_pinned_executable_windows_remediation(
         "-NonInteractive",
         "-Command",
     ]
-    assert "adobepy-v0.8.0" in acquire[4]
-    assert "b8633dbb093ee0b864057da4ded243aeb2359fead3a732d967304e3beb2da73e" in acquire[4]
-    assert "eaefea9d8a0921898157fba08cf5ae5a12108b17030c2c03f164450d03521ab1" in acquire[4]
+    assert "adobepy-v0.12.0" in acquire[4]
+    assert "b7c4923b474f01447f6f05666a8bd48c0beb4e0b7409b2842e1b506d1f12b48a" in acquire[4]
+    assert "5ab96c36a913bd39a30af5d77ee3af17e5e080a50d1a27823be97a4eee67bf0d" in acquire[4]
     assert retry == [
         "dcc-mcp-illustrator",
         "install",

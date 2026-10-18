@@ -51,10 +51,16 @@ def test_probe_requires_complete_bridge_contract():
 
 
 def test_probe_calls_real_host_version():
+    from adobe.core.runtime_identity import RuntimeIdentityAttestation
+    from test_adobepy_compat import identity_wire
+
     client = SimpleNamespace(capabilities=lambda: capability_payload())
     status = probe_illustrator(
         client=client,
-        app_factory=lambda **_kwargs: SimpleNamespace(version="30.0.0", runtime_identity={}),
+        app_factory=lambda **_kwargs: SimpleNamespace(
+            version="30.0.0",
+            runtime_identity=RuntimeIdentityAttestation.from_broker(identity_wire()),
+        ),
     )
     assert status.ready is True
     assert status.version == "30.0.0"

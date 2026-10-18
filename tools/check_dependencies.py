@@ -33,7 +33,7 @@ def main(argv: list[str] | None = None) -> int:
     requirements = _runtime_requirements()
     core = requirements["dcc-mcp-core"]
     adobepy = requirements["adobepy"]
-    if str(adobepy.specifier) != "==0.8.0":
+    if str(adobepy.specifier) != "==0.12.0":
         raise SystemExit(f"adobepy must be exactly bound to the audited release: {adobepy}")
     if str(core.specifier) not in {"<1.0.0,>=0.20.14", ">=0.20.14,<1.0.0"}:
         raise SystemExit(f"unexpected dcc-mcp-core package range: {core}")

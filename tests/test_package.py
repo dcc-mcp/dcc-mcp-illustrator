@@ -37,7 +37,7 @@ def test_distribution_binds_audited_adobepy_and_compatible_core_range():
         if "extra ==" not in item
     }
 
-    assert str(requirements["adobepy"].specifier) == "==0.8.0"
+    assert str(requirements["adobepy"].specifier) == "==0.12.0"
     assert requirements["adobepy"].specifier.contains(
         Version(importlib.metadata.version("adobepy")), prereleases=False
     )

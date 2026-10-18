@@ -324,7 +324,7 @@ def run_adobepy_install_bridge(
     except (json.JSONDecodeError, UnicodeError) as exc:
         raise InstallIoError("adobepy install-bridge returned invalid JSON") from exc
     expected_config = destination / "adobepy.config.js"
-    expected_manifest = destination / "manifest.xml"
+    expected_manifest = destination / "CSXS" / "manifest.xml"
     if (
         not isinstance(metadata, dict)
         or metadata.get("success") is not True
@@ -334,6 +334,12 @@ def run_adobepy_install_bridge(
         or Path(str(metadata.get("destination", ""))).resolve() != destination.resolve()
         or not expected_config.is_file()
         or expected_config.is_symlink()
+        or not expected_manifest.parent.is_dir()
+        or expected_manifest.parent.is_symlink()
+        or bool(
+            getattr(expected_manifest.parent.lstat(), "st_file_attributes", 0)
+            & getattr(stat, "FILE_ATTRIBUTE_REPARSE_POINT", 0x400)
+        )
         or not expected_manifest.is_file()
         or expected_manifest.is_symlink()
     ):
@@ -512,7 +518,13 @@ def _write_recovery_archive(
                     contents = source_path.read_bytes()
                 else:
                     raise OSError("Illustrator recovery receipt contains an unsupported entry")
-                if len(contents) != entry.get("bytes") or _sha256(contents) != entry.get("sha256"):
+                # Directory receipts bind the entry type and relative path, not file bytes.
+                digest = (
+                    _sha256(("directory\0" + relative.as_posix()).encode("utf-8"))
+                    if entry.get("type") == "directory"
+                    else _sha256(contents)
+                )
+                if len(contents) != entry.get("bytes") or digest != entry.get("sha256"):
                     raise OSError("Illustrator recovery source changed during snapshot")
                 archive.writestr(relative.as_posix(), contents)
         _replace_with_retry(temporary, archive_path)
@@ -551,7 +563,13 @@ def _restore_recovery_archive(
                 if relative is None or member.file_size != entry.get("bytes"):
                     raise OSError("Illustrator recovery archive contains an invalid entry")
                 contents = archive.read(member)
-                if len(contents) != entry.get("bytes") or _sha256(contents) != entry.get("sha256"):
+                # Directory receipts bind the entry type and relative path, not file bytes.
+                digest = (
+                    _sha256(("directory\0" + relative.as_posix()).encode("utf-8"))
+                    if entry.get("type") == "directory"
+                    else _sha256(contents)
+                )
+                if len(contents) != entry.get("bytes") or digest != entry.get("sha256"):
                     raise OSError("Illustrator recovery archive entry failed validation")
                 output = staging / relative
                 output.parent.mkdir(parents=True, exist_ok=True)

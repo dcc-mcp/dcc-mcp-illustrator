@@ -30,7 +30,12 @@ class BridgeRunner:
         self.calls.append((command, kwargs))
         destination = Path(command[command.index("--dest") + 1])
         destination.mkdir(parents=True, exist_ok=True)
+        # Keep the root file as generic rollback-test payload; CEP uses CSXS below.
         (destination / "manifest.xml").write_text("<ExtensionManifest />", encoding="utf-8")
+        (destination / "CSXS").mkdir(exist_ok=True)
+        (destination / "CSXS" / "manifest.xml").write_text(
+            "<ExtensionManifest />", encoding="utf-8"
+        )
         (destination / "adobepy.config.js").write_text(
             f"globalThis.__ADOBEPY_TOKEN='{kwargs['env']['ADOBEPY_TOKEN']}';",
             encoding="utf-8",
@@ -54,7 +59,7 @@ def resolved_install(tmp_path: Path, secret: str = "bridge-token-secret") -> Res
     host = tmp_path / "Adobe Illustrator 2024" / "Support Files" / "Illustrator.exe"
     host.parent.mkdir(parents=True)
     host.write_bytes(b"host")
-    bridge_bundle = tmp_path / "adobepy-0.8.0-windows-x64"
+    bridge_bundle = tmp_path / "adobepy-0.12.0-windows-x64"
     bridge_cli = bridge_bundle / "bin" / "adobepy.exe"
     bridge_cli.parent.mkdir(parents=True)
     bridge_cli.write_bytes(b"cli")
@@ -63,7 +68,7 @@ def resolved_install(tmp_path: Path, secret: str = "bridge-token-secret") -> Res
         json.dumps(
             {
                 "name": "adobepy",
-                "version": "0.8.0",
+                "version": "0.12.0",
                 "runtime": "windows-x64",
                 "includes": ["bin/adobepy.exe"],
             }
@@ -87,7 +92,7 @@ def resolved_install(tmp_path: Path, secret: str = "bridge-token-secret") -> Res
         target="default",
         bridge_identity={
             "executable": str(bridge_cli.resolve()),
-            "version": "0.8.0",
+            "version": "0.12.0",
             "runtime": "windows-x64",
             "bytes": len(cli_bytes),
             "sha256": hashlib.sha256(cli_bytes).hexdigest(),
@@ -113,7 +118,7 @@ def healthy_dependencies(runner: BridgeRunner) -> LifecycleDependencies:
                 "bridge_kind": "cep",
                 "target": resolved.target,
                 "host_version": resolved.host_version,
-                "bridge_version": "0.8.0",
+                "bridge_version": "0.12.0",
                 "host_pid": host_pid,
                 "process_start_identity": "test-host-start:41001",
                 "process_executable": str(resolved.host_path),
@@ -126,7 +131,7 @@ def healthy_dependencies(runner: BridgeRunner) -> LifecycleDependencies:
                     "pid": broker_pid,
                     "process_start_identity": "test-broker-start:41002",
                     "executable": str(resolved.adobepy_cli),
-                    "version": "0.8.0",
+                    "version": "0.12.0",
                     "instance_id": "adobepy-test-instance",
                 },
             },
