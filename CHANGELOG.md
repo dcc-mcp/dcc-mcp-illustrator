@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.3](https://github.com/dcc-mcp/dcc-mcp-illustrator/compare/v0.3.2...v0.3.3) (2026-10-18)
+
+
+### Bug Fixes
+
+* **deps:** pair adapter with adobepy 0.12.0 ([#19](https://github.com/dcc-mcp/dcc-mcp-illustrator/issues/19)) ([d10fe52](https://github.com/dcc-mcp/dcc-mcp-illustrator/commit/d10fe52642949103c3a1bd0c68cc67f84e5956d7))
+
 ## [0.3.2](https://github.com/dcc-mcp/dcc-mcp-illustrator/compare/v0.3.1...v0.3.2) (2026-10-17)
 
 
