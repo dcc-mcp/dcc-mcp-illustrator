@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.3.4](https://github.com/dcc-mcp/dcc-mcp-illustrator/compare/v0.3.3...v0.3.4) (2026-11-15)
+
+
+### Documentation
+
+* refresh the generated DCC-MCP host matrix pointer ([b3d0fde](https://github.com/dcc-mcp/dcc-mcp-illustrator/commit/b3d0fdeb9642fca8773b34b445cc415ea8b70bf9))
+* refresh the generated DCC-MCP host matrix pointer ([25bbf33](https://github.com/dcc-mcp/dcc-mcp-illustrator/commit/25bbf330481e5a2e8e9e98311cf25b6b79307b74))
+
 ## [0.3.3](https://github.com/dcc-mcp/dcc-mcp-illustrator/compare/v0.3.2...v0.3.3) (2026-10-18)
 
 
